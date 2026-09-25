@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Personnes &amp; Biens - LegalTech Madagascar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar-custom { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+        .clickable-row { cursor: pointer; transition: background-color 0.15s ease-in-out; }
+        .clickable-row:hover { background-color: #eef4ff !important; }
+        .date-picker-nav {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 30px;
+            padding: 4px 12px;
+        }
+        .date-picker-nav input[type="date"] {
+            background: #ffffff;
+            color: #1e3c72;
+            border: none;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+        .filter-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation with Application Date Simulator -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-3 mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold text-white fs-4" href="/contracts">
+                <i class="fa-solid me-2 fa-scale-balanced text-warning fs-3"></i>
+                LegalTech Madagascar
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <form action="/system/date" method="post" class="d-flex align-items-center gap-2 date-picker-nav shadow-sm">
+                    <i class="fa-solid fa-calendar-day text-warning fs-5"></i>
+                    <span class="text-white small fw-bold text-nowrap">Date Application :</span>
+                    <input type="date" name="simulatedDate" th:value="${simulatedDate}" onchange="this.form.submit()" title="Modifier la date système de l'application">
+                    <button type="submit" class="btn btn-sm btn-warning py-0 px-2 fw-bold text-dark rounded-circle" title="Actualiser la date">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </form>
+
+                <div class="d-flex align-items-center gap-2">
+                    <a href="/contracts" class="btn btn-outline-light rounded-pill px-3">
+                        <i class="fa-solid fa-file-contract me-1"></i> Contrats de Bail
+                    </a>
+                    <a href="/contracts/create" class="btn btn-warning rounded-pill px-3 fw-bold">
+                        <i class="fa-solid fa-plus me-1"></i> Nouveau Contrat
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+
+        <!-- Flash Messages -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4 shadow-sm" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i> <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4 shadow-sm" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> <strong th:text="${errorMessage}"></strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+
+            <!-- Left Column: Add New Person Form -->
+            <div class="col-lg-5">
+                <div class="card card-custom p-4 bg-white h-100">
+                    <h4 class="fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-user-plus text-primary me-2"></i> Enregistrer une Personne
+                    </h4>
+                    <p class="text-muted small mb-3">Saisie des informations de la personne (Contrôle d'âge majoritaire, CIN 12 chiffres &amp; Opérateurs tél. Malgaches).</p>
+
+                    <form th:action="@{/users/create}" method="post">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nom</label>
+                                <input type="text" name="nom" class="form-control" placeholder="ex: RAKOTO" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Prénom</label>
+                                <input type="text" name="prenom" class="form-control" placeholder="ex: Jean" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold">Email</label>
+                                <input type="email" name="email" class="form-control" placeholder="jean.rakoto@email.mg" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date de Naissance (>=18 ans)</label>
+                                <input type="date" name="dateNaissance" class="form-control" required title="Doit être majeur(e)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Genre</label>
+                                <select name="genre" class="form-select" required>
+                                    <option value="HOMME">Homme (1 en 6è pos. CIN)</option>
+                                    <option value="FEMME">Femme (2 en 6è pos. CIN)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Situation Matrimoniale</label>
+                                <select name="situationMatrimoniale" class="form-select">
+                                    <option th:each="s : ${maritalStatuses}" th:value="${s}" th:text="${s.label}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Rôle Système</label>
+                                <select name="role" class="form-select" required>
+                                    <option value="LANDLORD">Bailleur (Propriétaire)</option>
+                                    <option value="TENANT">Locataire (Preneur)</option>
+                                    <option value="ADMIN">Administrateur / Notaire</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Téléphone (Telma/Orange/Airtel)</label>
+                                <input type="text" name="telephone" class="form-control" placeholder="034 12 345 67">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Numéro CIN (12 Chiffres)</label>
+                                <input type="text" name="cinNumero" class="form-control" placeholder="101234156789" maxlength="12">
+                            </div>
+
+                            <div class="col-md-12 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm">
+                                    <i class="fa-solid fa-floppy-disk me-2"></i> Enregistrer la Personne
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right Column: Add New Property Form (Real World Specs) -->
+            <div class="col-lg-7">
+                <div class="card card-custom p-4 bg-white h-100">
+                    <h4 class="fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-house-chimney-medical text-success me-2"></i> Enregistrer un Bien Immobilier (Spécifications Réelles)
+                    </h4>
+                    <p class="text-muted small mb-3">Saisissez les caractéristiques réelles du bien (Type, superficie, chambres, étage, commodités...).</p>
+
+                    <form th:action="@{/properties/create}" method="post">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label class="form-label fw-semibold">Propriétaire Bailleur</label>
+                                <select name="proprietaireId" class="form-select" required>
+                                    <option value="">-- Sélectionner le propriétaire bailleur --</option>
+                                    <option th:each="u : ${landlords}" th:value="${u.id}" th:text="${u.nomComplet}"></option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold">Type de Bien</label>
+                                <select name="typeBien" class="form-select" required>
+                                    <option th:each="pt : ${propertyTypes}" th:value="${pt}" th:text="${pt.label}"></option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Adresse du Bien</label>
+                                <input type="text" name="adresse" class="form-control" placeholder="ex: Lot IVG 45 Isoraka" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Quartier</label>
+                                <input type="text" name="quartier" class="form-control" placeholder="ex: Isoraka">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Ville</label>
+                                <input type="text" name="ville" class="form-control" placeholder="ex: Antananarivo" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Référence Cadastrale / Titre</label>
+                                <input type="text" name="refCadastre" class="form-control" placeholder="ex: CAD-TNR-2024-889">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Superficie (m²)</label>
+                                <input type="number" step="0.5" name="superficie" class="form-control" placeholder="ex: 85.0">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nombre de Pièces</label>
+                                <input type="number" name="nombrePieces" class="form-control" value="3" min="1">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nombre de Chambres</label>
+                                <input type="number" name="nombreChambres" class="form-control" value="2" min="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Étage / Niveau</label>
+                                <input type="number" name="etage" class="form-control" value="0" placeholder="0 = RDC">
+                            </div>
+
+                            <!-- Equipements -->
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold d-block">Commodités &amp; Équipements</label>
+                                <div class="d-flex gap-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="meuble" value="true" class="form-check-input" id="checkMeuble">
+                                        <label class="form-check-label" for="checkMeuble"><i class="fa-solid fa-couch text-warning me-1"></i> Meublé</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" name="parking" value="true" class="form-check-input" id="checkParking">
+                                        <label class="form-check-label" for="checkParking"><i class="fa-solid fa-square-parking text-primary me-1"></i> Parking / Garage</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" name="compteurJirama" value="true" class="form-check-input" id="checkJirama" checked>
+                                        <label class="form-check-label" for="checkJirama"><i class="fa-solid fa-bolt text-success me-1"></i> Compteur JIRAMA Dédié</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-12 mt-3">
+                                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold rounded-pill shadow-sm">
+                                    <i class="fa-solid fa-building-circle-check me-2"></i> Enregistrer le Bien Immobilier
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Registered Persons Section & Multi-Criteria Search -->
+            <div class="col-lg-12">
+                <div class="card card-custom p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-users text-primary me-2"></i> Liste des Personnes Enregistrées
+                        </h4>
+                        <span class="badge bg-primary rounded-pill px-3 py-2 fw-normal">Cliquez sur une ligne pour modifier les détails</span>
+                    </div>
+
+                    <!-- Multi-Criteria Filter for Users -->
+                    <form th:action="@{/users}" method="get" class="filter-box p-3 mb-4">
+                        <!-- Preserve property filter state -->
+                        <input type="hidden" name="propQuery" th:value="${propQuery}">
+                        <input type="hidden" name="propType" th:value="${propType}">
+                        <input type="hidden" name="propVille" th:value="${propVille}">
+                        <input type="hidden" name="propSuperficieMin" th:value="${propSuperficieMin}">
+                        <input type="hidden" name="propSuperficieMax" th:value="${propSuperficieMax}">
+                        <input type="hidden" name="propChambresMin" th:value="${propChambresMin}">
+                        <input type="hidden" name="propMeuble" th:value="${propMeuble}">
+                        <input type="hidden" name="propParking" th:value="${propParking}">
+                        <input type="hidden" name="propJirama" th:value="${propJirama}">
+
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold text-muted mb-1">Recherche globale</label>
+                                <input type="text" name="userQuery" th:value="${userQuery}" class="form-control form-control-sm" placeholder="Nom, Prénom, Email, CIN...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold text-muted mb-1">Rôle</label>
+                                <select name="userRole" class="form-select form-select-sm">
+                                    <option value="">-- Tous les Rôles --</option>
+                                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r}" th:selected="${userRole == r}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Genre</label>
+                                <select name="userGenre" class="form-select form-select-sm">
+                                    <option value="">-- Tous --</option>
+                                    <option th:each="g : ${genders}" th:value="${g}" th:text="${g.label}" th:selected="${userGenre == g}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Situation Matrimoniale</label>
+                                <select name="userMatrimoniale" class="form-select form-select-sm">
+                                    <option value="">-- Toutes --</option>
+                                    <option th:each="m : ${maritalStatuses}" th:value="${m}" th:text="${m.label}" th:selected="${userMatrimoniale == m}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold">
+                                    <i class="fa-solid fa-filter me-1"></i> Filtrer
+                                </button>
+                                <a href="/users" class="btn btn-sm btn-outline-secondary" title="Réinitialiser">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom &amp; Prénom</th>
+                                    <th>Genre / Naissance</th>
+                                    <th>Situation</th>
+                                    <th>Rôle</th>
+                                    <th>Email</th>
+                                    <th>Téléphone</th>
+                                    <th>Numéro CIN</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="u : ${users}" class="clickable-row"
+                                    th:onclick="editUser([[${u.id}]], [[${u.nom}]], [[${u.prenom}]], [[${u.email}]], [[${u.telephone}]], [[${u.cinNumero}]], [[${u.role != null ? u.role.name() : ''}]], [[${u.dateNaissance}]], [[${u.genre != null ? u.genre.name() : ''}]], [[${u.situationMatrimoniale != null ? u.situationMatrimoniale.name() : ''}]])"
+                                    title="Cliquer pour modifier cette personne">
+                                    <td class="fw-bold text-dark" th:text="${u.nomComplet}">Jean RAKOTO</td>
+                                    <td>
+                                        <span th:if="${u.genre != null and u.genre.name() == 'HOMME'}" class="badge bg-primary text-white"><i class="fa-solid fa-mars me-1"></i> Homme</span>
+                                        <span th:if="${u.genre != null and u.genre.name() == 'FEMME'}" class="badge bg-danger text-white"><i class="fa-solid fa-venus me-1"></i> Femme</span>
+                                        <div class="small text-muted" th:text="${u.dateNaissance != null ? #temporals.format(u.dateNaissance, 'dd/MM/yyyy') : 'N/A'}">12/05/1980</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary" th:text="${u.situationMatrimoniale != null ? u.situationMatrimoniale.label : 'N/A'}">Marié(e)</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${u.role.name() == 'LANDLORD'}" class="badge bg-primary">Bailleur</span>
+                                        <span th:if="${u.role.name() == 'TENANT'}" class="badge bg-info text-dark">Locataire</span>
+                                        <span th:if="${u.role.name() == 'ADMIN'}" class="badge bg-dark">Admin</span>
+                                    </td>
+                                    <td th:text="${u.email}">jean@gmail.com</td>
+                                    <td th:text="${u.telephone}">+261 34 12 345 67</td>
+                                    <td class="font-monospace" th:text="${u.cinNumero}">101234156789</td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i> Modifier
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registered Properties Section & Multi-Criteria Search -->
+            <div class="col-lg-12">
+                <div class="card card-custom p-4 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-city text-success me-2"></i> Liste des Biens Immobiliers Enregistrés
+                        </h4>
+                        <span class="badge bg-success rounded-pill px-3 py-2 fw-normal">Cliquez sur une ligne pour modifier les détails</span>
+                    </div>
+
+                    <!-- Multi-Criteria Filter for Properties -->
+                    <form th:action="@{/users}" method="get" class="filter-box p-3 mb-4">
+                        <!-- Preserve user filter state -->
+                        <input type="hidden" name="userQuery" th:value="${userQuery}">
+                        <input type="hidden" name="userRole" th:value="${userRole}">
+                        <input type="hidden" name="userGenre" th:value="${userGenre}">
+                        <input type="hidden" name="userMatrimoniale" th:value="${userMatrimoniale}">
+
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold text-muted mb-1">Recherche bien</label>
+                                <input type="text" name="propQuery" th:value="${propQuery}" class="form-control form-control-sm" placeholder="Adresse, quartier, cadastre, proprio...">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Type de Bien</label>
+                                <select name="propType" class="form-select form-select-sm">
+                                    <option value="">-- Tous Types --</option>
+                                    <option th:each="pt : ${propertyTypes}" th:value="${pt}" th:text="${pt.label}" th:selected="${propType == pt}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Ville</label>
+                                <input type="text" name="propVille" th:value="${propVille}" class="form-control form-control-sm" placeholder="ex: Antananarivo">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Superficie Min (m²)</label>
+                                <input type="number" step="5" name="propSuperficieMin" th:value="${propSuperficieMin}" class="form-control form-control-sm" placeholder="ex: 50">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold text-muted mb-1">Superficie Max (m²)</label>
+                                <input type="number" step="5" name="propSuperficieMax" th:value="${propSuperficieMax}" class="form-control form-control-sm" placeholder="ex: 150">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Chambres Min</label>
+                                <input type="number" name="propChambresMin" th:value="${propChambresMin}" class="form-control form-control-sm" placeholder="ex: 2">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Meublé</label>
+                                <select name="propMeuble" class="form-select form-select-sm">
+                                    <option value="">-- Tous --</option>
+                                    <option value="true" th:selected="${propMeuble == true}">Oui (Meublé)</option>
+                                    <option value="false" th:selected="${propMeuble == false}">Non (Non Meublé)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Parking / Garage</label>
+                                <select name="propParking" class="form-select form-select-sm">
+                                    <option value="">-- Tous --</option>
+                                    <option value="true" th:selected="${propParking == true}">Oui (Avec Parking)</option>
+                                    <option value="false" th:selected="${propParking == false}">Non</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold text-muted mb-1">Compteur JIRAMA</label>
+                                <select name="propJirama" class="form-select form-select-sm">
+                                    <option value="">-- Tous --</option>
+                                    <option value="true" th:selected="${propJirama == true}">Oui (Dédié)</option>
+                                    <option value="false" th:selected="${propJirama == false}">Non</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex gap-1">
+                                <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">
+                                    <i class="fa-solid fa-filter me-1"></i> Filtrer les Biens Immobiliers
+                                </button>
+                                <a href="/users" class="btn btn-sm btn-outline-secondary" title="Réinitialiser tous les filtres">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Type &amp; Adresse</th>
+                                    <th>Superficie &amp; Pièces</th>
+                                    <th>Quartier &amp; Ville</th>
+                                    <th>Propriétaire</th>
+                                    <th>Commodités</th>
+                                    <th>Cadastre</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="p : ${properties}" class="clickable-row"
+                                    th:onclick="editProperty([[${p.id}]], [[${p.proprietaire != null ? p.proprietaire.id : ''}]], [[${p.adresse}]], [[${p.quartier}]], [[${p.ville}]], [[${p.refCadastre}]], [[${p.typeBien != null ? p.typeBien.name() : 'APPARTEMENT'}]], [[${p.superficie}]], [[${p.nombrePieces}]], [[${p.nombreChambres}]], [[${p.etage}]], [[${p.meuble}]], [[${p.parking}]], [[${p.compteurJirama}]])"
+                                    title="Cliquer pour modifier ce bien immobilier">
+                                    <td>
+                                        <span class="badge bg-secondary mb-1" th:text="${p.typeBien != null ? p.typeBien.label : 'Appartement'}">Appartement</span>
+                                        <div class="fw-bold text-dark" th:text="${p.adresse}">Lot IVG 45 Isoraka</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-primary" th:text="${(p.superficie != null ? p.superficie : 0) + ' m²'}">95 m²</div>
+                                        <small class="text-muted" th:text="${(p.nombrePieces != null ? p.nombrePieces : 1) + ' pièces (' + (p.nombreChambres != null ? p.nombreChambres : 1) + ' ch.)'}">4 pièces (3 ch.)</small>
+                                    </td>
+                                    <td th:text="${p.quartier + ', ' + p.ville}">Isoraka, Antananarivo</td>
+                                    <td th:text="${p.proprietaire != null ? p.proprietaire.nomComplet : 'Non spécifié'}">Jean RAKOTO</td>
+                                    <td>
+                                        <span th:if="${p.meuble}" class="badge bg-warning text-dark me-1" title="Meublé"><i class="fa-solid fa-couch"></i> Meublé</span>
+                                        <span th:if="${p.parking}" class="badge bg-info text-dark me-1" title="Parking"><i class="fa-solid fa-square-parking"></i> Parking</span>
+                                        <span th:if="${p.compteurJirama}" class="badge bg-success" title="Compteur JIRAMA indépendant"><i class="fa-solid fa-bolt"></i> JIRAMA</span>
+                                    </td>
+                                    <td class="font-monospace text-muted small" th:text="${p.refCadastre != null ? p.refCadastre : 'N/A'}">CAD-TNR-2024-889</td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i> Modifier
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Modal d'Édition d'une Personne -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="editUserModalLabel">
+                        <i class="fa-solid fa-user-pen me-2"></i> Modifier les Détails de la Personne
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/users/update}" method="post">
+                    <input type="hidden" name="id" id="editUserId">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nom</label>
+                                <input type="text" name="nom" id="editUserNom" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Prénom</label>
+                                <input type="text" name="prenom" id="editUserPrenom" class="form-control" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold">Email</label>
+                                <input type="email" name="email" id="editUserEmail" class="form-control" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date de Naissance</label>
+                                <input type="date" name="dateNaissance" id="editUserDateNaissance" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Genre</label>
+                                <select name="genre" id="editUserGenre" class="form-select" required>
+                                    <option value="HOMME">Homme (1 en 6è pos. CIN)</option>
+                                    <option value="FEMME">Femme (2 en 6è pos. CIN)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Situation Matrimoniale</label>
+                                <select name="situationMatrimoniale" id="editUserMatrimoniale" class="form-select">
+                                    <option th:each="s : ${maritalStatuses}" th:value="${s}" th:text="${s.label}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Rôle Système</label>
+                                <select name="role" id="editUserRole" class="form-select" required>
+                                    <option value="LANDLORD">Bailleur (Propriétaire)</option>
+                                    <option value="TENANT">Locataire (Preneur)</option>
+                                    <option value="ADMIN">Administrateur / Notaire</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Téléphone</label>
+                                <input type="text" name="telephone" id="editUserTelephone" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Numéro de CIN</label>
+                                <input type="text" name="cinNumero" id="editUserCinNumero" class="form-control" maxlength="12">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Enregistrer les Modifications
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal d'Édition d'un Bien Immobilier -->
+    <div class="modal fade" id="editPropertyModal" tabindex="-1" aria-labelledby="editPropertyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-success text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="editPropertyModalLabel">
+                        <i class="fa-solid fa-house-pen me-2"></i> Modifier le Bien Immobilier
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form th:action="@{/properties/update}" method="post">
+                    <input type="hidden" name="id" id="editPropId">
+                    <div class="modal-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <label class="form-label fw-semibold">Propriétaire Bailleur</label>
+                                <select name="proprietaireId" id="editPropBailleurId" class="form-select" required>
+                                    <option th:each="u : ${landlords}" th:value="${u.id}" th:text="${u.nomComplet}"></option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold">Type de Bien</label>
+                                <select name="typeBien" id="editPropTypeBien" class="form-select" required>
+                                    <option th:each="pt : ${propertyTypes}" th:value="${pt}" th:text="${pt.label}"></option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Adresse du Bien</label>
+                                <input type="text" name="adresse" id="editPropAdresse" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Quartier</label>
+                                <input type="text" name="quartier" id="editPropQuartier" class="form-control">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Ville</label>
+                                <input type="text" name="ville" id="editPropVille" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Référence Cadastrale / Titre</label>
+                                <input type="text" name="refCadastre" id="editPropRefCadastre" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Superficie (m²)</label>
+                                <input type="number" step="0.5" name="superficie" id="editPropSuperficie" class="form-control">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nombre de Pièces</label>
+                                <input type="number" name="nombrePieces" id="editPropPieces" class="form-control" min="1">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nombre de Chambres</label>
+                                <input type="number" name="nombreChambres" id="editPropChambres" class="form-control" min="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Étage / Niveau</label>
+                                <input type="number" name="etage" id="editPropEtage" class="form-control">
+                            </div>
+
+                            <!-- Equipements -->
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold d-block">Commodités &amp; Équipements</label>
+                                <div class="d-flex gap-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="meuble" value="true" class="form-check-input" id="editPropMeuble">
+                                        <label class="form-check-label" for="editPropMeuble"><i class="fa-solid fa-couch text-warning me-1"></i> Meublé</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" name="parking" value="true" class="form-check-input" id="editPropParking">
+                                        <label class="form-check-label" for="editPropParking"><i class="fa-solid fa-square-parking text-primary me-1"></i> Parking / Garage</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" name="compteurJirama" value="true" class="form-check-input" id="editPropJirama">
+                                        <label class="form-check-label" for="editPropJirama"><i class="fa-solid fa-bolt text-success me-1"></i> Compteur JIRAMA Dédié</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light rounded-bottom-4">
+                        <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Enregistrer les Modifications
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function editUser(id, nom, prenom, email, telephone, cinNumero, role, dateNaissance, genre, situationMatrimoniale) {
+            document.getElementById('editUserId').value = id || '';
+            document.getElementById('editUserNom').value = nom || '';
+            document.getElementById('editUserPrenom').value = prenom || '';
+            document.getElementById('editUserEmail').value = email || '';
+            document.getElementById('editUserTelephone').value = telephone || '';
+            document.getElementById('editUserCinNumero').value = cinNumero || '';
+            document.getElementById('editUserRole').value = role || 'LANDLORD';
+            document.getElementById('editUserDateNaissance').value = dateNaissance || '';
+            document.getElementById('editUserGenre').value = genre || 'HOMME';
+            document.getElementById('editUserMatrimoniale').value = situationMatrimoniale || 'CELIBATAIRE';
+
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        }
+
+        function editProperty(id, proprietaireId, adresse, quartier, ville, refCadastre, typeBien, superficie, nombrePieces, nombreChambres, etage, meuble, parking, compteurJirama) {
+            document.getElementById('editPropId').value = id || '';
+            document.getElementById('editPropBailleurId').value = proprietaireId || '';
+            document.getElementById('editPropAdresse').value = adresse || '';
+            document.getElementById('editPropQuartier').value = quartier || '';
+            document.getElementById('editPropVille').value = ville || '';
+            document.getElementById('editPropRefCadastre').value = refCadastre || '';
+            document.getElementById('editPropTypeBien').value = typeBien || 'APPARTEMENT';
+            document.getElementById('editPropSuperficie').value = superficie !== null ? superficie : '';
+            document.getElementById('editPropPieces').value = nombrePieces !== null ? nombrePieces : 1;
+            document.getElementById('editPropChambres').value = nombreChambres !== null ? nombreChambres : 1;
+            document.getElementById('editPropEtage').value = etage !== null ? etage : 0;
+            
+            document.getElementById('editPropMeuble').checked = meuble === true || meuble === 'true';
+            document.getElementById('editPropParking').checked = parking === true || parking === 'true';
+            document.getElementById('editPropJirama').checked = compteurJirama === true || compteurJirama === 'true';
+
+            const modal = new bootstrap.Modal(document.getElementById('editPropertyModal'));
+            modal.show();
+        }
+    </script>
+</body>
+</html>

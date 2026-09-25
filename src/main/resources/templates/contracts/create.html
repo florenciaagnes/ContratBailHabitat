@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créer un Contrat de Bail - LegalTech Madagascar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar-custom { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+        .clause-card { border-left: 4px solid #2a5298; background-color: #f8fafc; }
+        .date-picker-nav {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 30px;
+            padding: 4px 12px;
+        }
+        .date-picker-nav input[type="date"] {
+            background: #ffffff;
+            color: #1e3c72;
+            border: none;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation with Application Date Simulator -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-3 mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold text-white fs-4" href="/contracts">
+                <i class="fa-solid me-2 fa-scale-balanced text-warning fs-3"></i>
+                LegalTech Madagascar
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <form action="/system/date" method="post" class="d-flex align-items-center gap-2 date-picker-nav shadow-sm">
+                    <i class="fa-solid fa-calendar-day text-warning fs-5"></i>
+                    <span class="text-white small fw-bold text-nowrap">Date Application :</span>
+                    <input type="date" name="simulatedDate" th:value="${simulatedDate}" onchange="this.form.submit()" title="Modifier la date système de l'application">
+                    <button type="submit" class="btn btn-sm btn-warning py-0 px-2 fw-bold text-dark rounded-circle" title="Actualiser la date">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </form>
+
+                <div class="d-flex align-items-center gap-2">
+                    <a href="/users" class="btn btn-outline-light rounded-pill px-3">
+                        <i class="fa-solid fa-users me-1"></i> Personnes &amp; Biens
+                    </a>
+                    <a href="/contracts" class="btn btn-outline-light rounded-pill px-3">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Liste Contrats
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+
+                <div class="card card-custom bg-white p-4 mb-4">
+                    <h3 class="fw-bold text-dark mb-1">Établissement du Contrat de Bail d'Habitation</h3>
+                    <p class="text-muted small">Saisissez les informations financières, insérez n'importe quel article de loi issu des documents PDF officiels et/ou rédigez librement vos clauses personnalisées.</p>
+
+                    <form th:action="@{/contracts/create}" method="post">
+                        
+                        <!-- Section 1 : Parties au contrat -->
+                        <h5 class="fw-bold text-primary mb-3 mt-2 border-bottom pb-2">
+                            <i class="fa-solid fa-users me-2"></i> 1. Les Parties Contractantes
+                        </h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Bailleur (Propriétaire)</label>
+                                <select name="bailleurId" class="form-select" required>
+                                    <option value="">-- Sélectionner le bailleur --</option>
+                                    <option th:each="u : ${landlords}" th:value="${u.id}" th:text="${u.nomComplet + ' (' + u.cinNumero + ')'}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Locataire (Preneur)</label>
+                                <select name="locataireId" class="form-select" required>
+                                    <option value="">-- Sélectionner le locataire --</option>
+                                    <option th:each="u : ${tenants}" th:value="${u.id}" th:text="${u.nomComplet + ' (' + u.cinNumero + ')'}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Bien Immoblier Loué</label>
+                                <select name="bienId" class="form-select" required>
+                                    <option value="">-- Sélectionner le bien --</option>
+                                    <option th:each="p : ${properties}" th:value="${p.id}" th:text="${p.adresse + ' (' + (p.typeBien != null ? p.typeBien.label : 'Bien') + ' ' + (p.superficie != null ? p.superficie + 'm²' : '') + ') - ' + p.ville}"></option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Section 2 : Dispositions Financières & Durée -->
+                        <h5 class="fw-bold text-primary mb-3 border-bottom pb-2">
+                            <i class="fa-solid fa-sack-dollar me-2"></i> 2. Modalités Financières &amp; Durée
+                        </h5>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Loyer Mensuel (Ariary)</label>
+                                <input type="number" step="1000" name="loyer" class="form-control" placeholder="Ex: 1000000" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Charges Mensuelles (Ar)</label>
+                                <input type="number" step="1000" name="charges" class="form-control" value="0">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Dépôt de Garantie (Ar)</label>
+                                <input type="number" step="1000" name="depot" class="form-control" placeholder="Ex: 2000000" required>
+                                <small class="text-muted" style="font-size: 0.75rem;">Max 2 mois de loyer (Loi 2015-037)</small>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check mt-4 pt-2">
+                                    <input type="checkbox" name="taciteReconduction" class="form-check-input" id="taciteCheck" value="true" checked>
+                                    <label class="form-check-label fw-semibold" for="taciteCheck">Tacite Reconduction</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date de Prise d'Effet</label>
+                                <input type="date" name="dateDebut" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date d'Échéance</label>
+                                <input type="date" name="dateFin" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <!-- Section 3 : Dynamic Clauses (Tous les Articles de loi PDF + Rédaction Libre) -->
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                            <h5 class="fw-bold text-primary mb-0">
+                                <i class="fa-solid fa-list-check me-2"></i> 3. Articles du Contrat (Textes PDF Officiels &amp; Rédaction Libre)
+                            </h5>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#pdfArticlesModal">
+                                    <i class="fa-solid fa-book-bookmark me-1"></i> Bibliothèque d'Articles PDF (Tous les Textes)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="addClauseField('', '')">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> Rédiger une Clause Libre
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border py-2 mb-3 small text-muted">
+                            <i class="fa-solid fa-lightbulb me-1 text-warning"></i> Cliquez sur le bouton <strong>Bibliothèque d'Articles PDF</strong> pour parcourir l'ensemble des articles légaux du droit du bail à Madagascar (Loi 2015-037, Code Civil LTGO, Guide TPI), insérez-les en 1 clic et modifiez librement leur texte.
+                        </div>
+
+                        <div id="clausesContainer" class="mb-4">
+                            <!-- Clauses dynamic elements will be appended here -->
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="/contracts" class="btn btn-light px-4 me-md-2">Annuler</a>
+                            <button type="submit" class="btn btn-success px-5 fw-bold shadow-sm">
+                                <i class="fa-solid fa-microchip me-2"></i> Créer &amp; Lancer l'Audit Juridique
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de la Bibliothèque Complète des Articles PDF de Droit du Bail -->
+    <div class="modal fade" id="pdfArticlesModal" tabindex="-1" aria-labelledby="pdfArticlesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="pdfArticlesModalLabel">
+                        <i class="fa-solid fa-book-open-reader me-2"></i> Tous les Articles de Loi &amp; Droits du Bail d'Habitation (PDF Officiels)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+
+                    <!-- Onglets par Source PDF -->
+                    <ul class="nav nav-pills nav-fill mb-4" id="pdfTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold py-2" id="loi-tab" data-bs-toggle="tab" data-bs-target="#loi-content" type="button" role="tab">
+                                <i class="fa-solid fa-file-pdf me-1 text-danger"></i> Loi N° 2015-037 (Bail d'Habitation)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold py-2" id="code-tab" data-bs-toggle="tab" data-bs-target="#code-content" type="button" role="tab">
+                                <i class="fa-solid fa-scale-unbalanced me-1 text-primary"></i> Code Civil LTGO (Loi 66-003)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold py-2" id="tpi-tab" data-bs-toggle="tab" data-bs-target="#tpi-content" type="button" role="tab">
+                                <i class="fa-solid fa-gavel me-1 text-warning"></i> Guide TPI (Procédure &amp; Expulsion)
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="pdfTabContent">
+                        
+                        <!-- Onglet 1 : Loi 2015-037 (Tous les articles) -->
+                        <div class="tab-pane fade show active" id="loi-content" role="tabpanel">
+                            <div class="row g-3">
+                                
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 1 - Champ d'application</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Champ d\'application (Art. 1 Loi 2015-037)', 'La présente loi régit les baux de locaux à usage d\'habitation ou à usage mixte professionnel et d\'habitation.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Régit tous les locaux loués à usage d'habitation principale ou mixte.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 4 - Forme du bail par écrit</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Forme du contrat par écrit (Art. 4 Loi 2015-037)', 'Le contrat de bail d\'habitation doit être obligatoirement établi par écrit et en autant d\'exemplaires originaux qu\'il y a de parties.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Obligation d'un écrit original pour chaque partie contractante.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 6 - État des lieux contradictoire</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('État des lieux d\'entrée (Art. 6 Loi 2015-037)', 'Un état des lieux contradictoire doit être établi par écrit lors de la remise des clés et joint au contrat de bail.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Obligation d'inventaire écrit d'entrée contradictoire.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 8 - Destination &amp; Sous-location</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Destination et interdiction de sous-location (Art. 8 Loi 2015-037)', 'Le bien est destiné exclusivement à l\'usage d\'habitation. La sous-location totale ou partielle est formellement interdite sans accord écrit préalable du bailleur.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Habitation exclusive et interdiction de sous-louer sans accord.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-danger">Art. 12 - Plafond Dépôt de Garantie (2 Mois Max)</span>
+                                            <button type="button" class="btn btn-sm btn-danger fw-bold" onclick="insertPdfArticle('Dépôt de garantie légal (Art. 12 Loi 2015-037)', 'Le dépôt de garantie versé par le locataire à la signature du contrat ne peut en aucun cas excéder deux (2) mois de loyer principal hors charges. Toute clause stipulant un dépôt supérieur à 2 mois est réputée nulle et non avenue de plein droit.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-dark mb-0">Plafond impératif de 2 mois de loyer. Clauses contraires nulles de plein droit.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 13 - Restitution du Dépôt de Garantie</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Restitution du dépôt de garantie (Art. 13 Loi 2015-037)', 'Le dépôt de garantie doit être restitué au locataire dans un délai maximal de deux (2) mois à compter de la remise des clés, sous déduction des sommes dues.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Restitution sous 2 mois maximum après état des lieux de sortie.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 18 - Révision Triennale du Loyer</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Révision triennale du loyer (Art. 18 Loi 2015-037)', 'La révision du loyer principal ne peut intervenir qu\'au terme de chaque période triennale (3 ans) et est plafonnée selon l\'indice des prix à la consommation fixé par l\'INSTAT.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Révision possible seulement tous les 3 ans selon l'INSTAT.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 21 - Charges Locatives Récupérables</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Justification des charges locatives (Art. 21 Loi 2015-037)', 'Les charges locatives remboursables au bailleur doivent être justifiées par des pièces et factures réelles (eau, électricité, entretien communs).')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Remboursement des charges sur justificatifs réels.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 24 - Préavis de Congé du Locataire (3 Mois)</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Préavis de résiliation du locataire (Art. 24 Loi 2015-037)', 'Le locataire peut résilier le bail à tout moment en notifiant un préavis de trois (3) mois au bailleur sans justification de motif.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Droit de résiliation à tout moment avec préavis de 3 mois.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-primary">Art. 25 - Préavis de Congé du Bailleur (6 Mois)</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Congé du bailleur pour reprise ou vente (Art. 25 Loi 2015-037)', 'Le bailleur peut donner congé au locataire pour reprise personnelle ou vente du bien en notifiant un préavis minimal de six (6) mois.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Congé pour reprise ou vente sous préavis de 6 mois.</p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Onglet 2 : Code Civil LTGO (Tous les articles) -->
+                        <div class="tab-pane fade" id="code-content" role="tabpanel">
+                            <div class="row g-3">
+                                
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-secondary">Art. 1709 - Définition du Louage</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Définition du bail (Art. 1709 Code Civil LTGO)', 'Le louage de choses est un contrat par lequel l\'une des parties s\'oblige à faire jouir l\'autre d\'une chose pendant un certain temps moyennant un prix déterminé.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Définition légale du contrat de louage de choses.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-secondary">Art. 1719 - Obligation de Salubrité</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Obligation de salubrité et délivrance (Art. 1719 Code Civil LTGO)', 'Le bailleur est obligé de délivrer le logement en état de salubrité et d\'habitabilité, et d\'assurer la jouissance paisible du preneur.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Délivrance en bon état de salubrité et jouissance paisible.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-warning text-dark">Art. 1720 - Réparations Majeures &amp; Structure</span>
+                                            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold" onclick="insertPdfArticle('Réparations majeures et de structure (Art. 1720 Code Civil LTGO)', 'Le bailleur est tenu d\'exécuter à ses frais toutes les réparations majeures et de structure (toiture, étanchéité, gros œuvre, canalisations). Est réputée léonine et abusive toute clause déchargeant le bailleur de cette obligation.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-dark mb-0">Gros travaux structurels à la charge du bailleur. Clauses contraires abusives.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-secondary">Art. 1721 - Garantie des Vices Cachés</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Garantie des vices cachés (Art. 1721 Code Civil LTGO)', 'Il est dû garantie au preneur pour tous les vices ou défauts de la chose louée qui en empêchent l\'usage, quand même le bailleur ne les aurait pas connus lors du bail.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Garantie contre les défauts cachés nuisant à l'habitation.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-secondary">Art. 1728 - Obligations du Preneur</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Obligations du locataire (Art. 1728 Code Civil LTGO)', 'Le preneur est tenu d\'user de la chose louée en bon père de famille suivant la destination du bail, et de payer le prix du bail aux termes convenus.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Paiement du loyer et entretien en bon père de famille.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-secondary">Art. 1731 - Présomption de Bon État</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Présomption d\'état des lieux (Art. 1731 Code Civil LTGO)', 'S\'il n\'a pas été fait d\'état des lieux, le preneur est présumé les avoir reçus en bon état de réparations locatives et doit les rendre tels, sauf preuve contraire.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Présomption légale de bon état en l'absence d'état des lieux.</p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Onglet 3 : Guide TPI (Tous les articles de procédure) -->
+                        <div class="tab-pane fade" id="tpi-content" role="tabpanel">
+                            <div class="row g-3">
+                                
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-dark">Art. 1 - Compétence du Tribunal TPI</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Compétence judiciaire (Art. 1 Guide TPI)', 'Le Tribunal de Première Instance (TPI) du lieu de situation de l\'immeuble est seul compétent pour connaître des litiges relatifs au bail d\'habitation.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Le TPI local est seul juge compétent pour tout litige locatif.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-dark">Art. 3 - Commandement de Payer par Huissier</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Mise en demeure par Huissier (Art. 3 Guide TPI)', 'Tout recours en résiliation de bail pour impayé exige la signification préalable d\'un commandement de payer par acte d\'Huissier de Justice.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Commandement par Huissier de justice obligatoire avant poursuites.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-danger">Art. 5 - Titre Exécutoire Obligatoire</span>
+                                            <button type="button" class="btn btn-sm btn-danger fw-bold" onclick="insertPdfArticle('Procédure légale d\'expulsion (Art. 5 Guide TPI)', 'L\'expulsion d\'un locataire ou l\'interruption des services essentiels (coupure d\'eau, d\'électricité, serrures) exige obligatoirement une décision de justice exécutoire du TPI.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-dark mb-0">Seul un juge du TPI peut ordonner l'expulsion forcée.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3 bg-light">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-danger">Art. 8 - Interdiction Stricte des Voies de Fait</span>
+                                            <button type="button" class="btn btn-sm btn-danger fw-bold" onclick="insertPdfArticle('Interdiction des voies de fait (Art. 8 Guide TPI)', 'Sont formellement interdites les voies de fait commises par le bailleur (changement de serrures, retrait portes/fenêtres, coupure d\'eau/électricité). Tout manquement expose à des sanctions pénales.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-dark mb-0">Coupures d'eau/électricité et changement de serrures pénalement répréhensibles.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-dark">Art. 10 - Réintégration sous Astreinte</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Réintégration sous astreinte (Art. 10 Guide TPI)', 'La réintégration immédiate du locataire et l\'interdiction de troubler sa jouissance sont ordonnées sous astreinte financière journalière en cas de voie de fait.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Astreintes financières en cas de trouble de jouissance.</p>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="badge bg-dark">Art. 12 - Indemnité d'Occupation</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="insertPdfArticle('Indemnité d\'occupation sans titre (Art. 12 Guide TPI)', 'La restitution des clés est constatée par acte d\'huissier. L\'occupant maintenu sans droit ni titre s\'expose au paiement d\'une indemnité d\'occupation journalière.')">
+                                                <i class="fa-solid fa-plus me-1"></i> Insérer
+                                            </button>
+                                        </div>
+                                        <p class="small text-muted mb-0">Indemnité due pour maintien injustifié dans les lieux.</p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let clauseCount = 0;
+
+        function addClauseField(titre = '', texte = '') {
+            clauseCount++;
+            const container = document.getElementById('clausesContainer');
+            const div = document.createElement('div');
+            div.className = 'card clause-card p-3 mb-3';
+            div.id = `clause-row-${clauseCount}`;
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-secondary">Clause #${clauseCount}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeClause('clause-row-${clauseCount}')">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-12 mb-2">
+                        <input type="text" name="clauseTitres" class="form-control form-control-sm fw-bold" placeholder="Titre de la clause (ou modifiez l'article de loi...)" value="${titre}" required>
+                    </div>
+                    <div class="col-md-12">
+                        <textarea name="clauseTextes" class="form-control form-control-sm" rows="2" placeholder="Saisissez ou modifiez librement le texte de l'article..." required>${texte}</textarea>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function insertPdfArticle(titre, texte) {
+            addClauseField(titre, texte);
+            const modalEl = document.getElementById('pdfArticlesModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        function removeClause(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function loadStandardClauses() {
+            const today = new Date();
+            const nextYear = new Date(today);
+            nextYear.setFullYear(today.getFullYear() + 1);
+
+            const dateDebutInput = document.querySelector('input[name="dateDebut"]');
+            const dateFinInput = document.querySelector('input[name="dateFin"]');
+            const loyerInput = document.querySelector('input[name="loyer"]');
+            const depotInput = document.querySelector('input[name="depot"]');
+
+            if (dateDebutInput && !dateDebutInput.value) dateDebutInput.value = today.toISOString().split('T')[0];
+            if (dateFinInput && !dateFinInput.value) dateFinInput.value = nextYear.toISOString().split('T')[0];
+            if (loyerInput && !loyerInput.value) loyerInput.value = 1000000;
+            if (depotInput && !depotInput.value) depotInput.value = 2000000;
+
+            document.getElementById('clausesContainer').innerHTML = '';
+            clauseCount = 0;
+
+            addClauseField('Destination des lieux (Art. 8 Loi 2015-037)', 'Le bien loué est destiné exclusivement à l\'usage d\'habitation principale du locataire et de sa famille. Toute sous-location est interdite sans accord écrit.');
+            addClauseField('Dépôt de garantie légal (Art. 12 Loi 2015-037)', 'Le locataire verse un dépôt de garantie égal à deux (2) mois de loyer principal hors charges. Ce dépôt sera restitué à la fin du bail sous déduction des sommes dues.');
+            addClauseField('Entretien et réparations majeures (Art. 1720 Code Civil LTGO)', 'Le bailleur conserve la charge exclusive des réparations majeures et de structure (toiture, étanchéité, gros œuvre). Le locataire assure l\'entretien locatif courant.');
+            addClauseField('Résiliation judiciaire et voies de fait (Art. 5 & 8 Guide TPI)', 'Toute résiliation ou expulsion exige une décision de justice exécutoire du TPI. Le bailleur s\'interdit formellement toute coupure d\'eau, d\'électricité ou changement de serrure sans titre exécutoire.');
+        }
+
+        window.onload = function() {
+            loadStandardClauses();
+        };
+    </script>
+</body>
+</html>

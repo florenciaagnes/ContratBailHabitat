@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signature Numérique &amp; Scellement - LegalTech Madagascar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar-custom { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .card-custom { border: none; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+        .hash-code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #1e1e1e;
+            color: #00d2ff;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            word-break: break-all;
+            font-size: 0.9rem;
+        }
+        .seal-stamp {
+            border: 3px dashed #198754;
+            border-radius: 12px;
+            padding: 1.5rem;
+            background-color: #f0fff4;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-3 mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center fw-bold text-white fs-4" href="/contracts">
+                <i class="fa-solid me-2 fa-scale-balanced text-warning fs-3"></i>
+                LegalTech Madagascar
+            </a>
+            <a href="/contracts" class="btn btn-outline-light rounded-pill px-4">
+                <i class="fa-solid fa-arrow-left me-1"></i> Retour Liste
+            </a>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+
+        <!-- Flash Alerts -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-3 mb-4" role="alert">
+            <i class="fa-solid fa-circle-check me-2"></i> <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${infoMessage}" class="alert alert-info alert-dismissible fade show rounded-3 mb-4" role="alert">
+            <i class="fa-solid fa-mobile-screen-button me-2"></i> <span th:text="${infoMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-3 mb-4" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i> <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Column: Contract Overview & Sealed PDF Download -->
+            <div class="col-lg-7">
+                <div class="card card-custom p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="fw-bold text-dark mb-0" th:text="${contract.reference}">BAIL-2026-001</h3>
+                        <span th:if="${contract.statut.name() == 'SIGNED'}" class="badge bg-success fs-6">
+                            <i class="fa-solid fa-certificate me-1"></i> SCELLÉ &amp; SIGNÉ
+                        </span>
+                        <span th:if="${contract.statut.name() != 'SIGNED'}" class="badge bg-warning text-dark fs-6">
+                            <i class="fa-solid fa-clock me-1"></i> EN ATTENTE DE SIGNATURE
+                        </span>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3">
+                                <small class="text-muted d-block fw-semibold">Bailleur (Propriétaire)</small>
+                                <strong class="fs-6" th:text="${contract.bailleur.nomComplet}">Jean RAKOTO</strong>
+                                <div class="small text-muted" th:text="'CIN N° : ' + ${contract.bailleur.cinNumero}"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-3">
+                                <small class="text-muted d-block fw-semibold">Locataire (Preneur)</small>
+                                <strong class="fs-6" th:text="${contract.locataire.nomComplet}">Aina RABE</strong>
+                                <div class="small text-muted" th:text="'CIN N° : ' + ${contract.locataire.cinNumero}"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold text-dark mb-2">Conditions du Bail</h5>
+                    <ul class="list-group list-group-flush mb-4">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Loyer mensuel :</span>
+                            <strong th:text="${#numbers.formatDecimal(contract.loyer, 0, 'WHITESPACE', 0, 'POINT') + ' Ariary'}"></strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Dépôt de garantie :</span>
+                            <strong class="text-primary" th:text="${#numbers.formatDecimal(contract.depot, 0, 'WHITESPACE', 0, 'POINT') + ' Ariary'}"></strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Durée d'effet :</span>
+                            <strong th:text="${contract.dateDebut + ' au ' + contract.dateFin}"></strong>
+                        </li>
+                    </ul>
+
+                    <div class="d-grid gap-2">
+                        <a th:href="@{'/contracts/' + ${contract.id} + '/download'}" class="btn btn-dark btn-lg fw-bold rounded-pill" target="_blank">
+                            <i class="fa-solid fa-file-pdf text-danger me-2"></i> Télécharger le PDF Scellé Officiel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: OTP Signature & SHA-256 Fingerprint -->
+            <div class="col-lg-5">
+                
+                <!-- Signature Form Card -->
+                <div class="card card-custom p-4 bg-white mb-4">
+                    <h4 class="fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-signature text-success me-2"></i> Module de Signature OTP
+                    </h4>
+                    <p class="text-muted small mb-4">Saisissez le code OTP à 6 chiffres pour apposer une signature numérique infalsifiable.</p>
+
+                    <form th:action="@{'/contracts/' + ${contract.id} + '/send-otp'}" method="post" class="mb-4">
+                        <label class="form-label fw-semibold">Signataire</label>
+                        <div class="input-group">
+                            <select name="userId" class="form-select" required>
+                                <option th:each="s : ${signers}" th:value="${s.id}" th:text="${s.nomComplet + ' (' + s.role + ')'}"></option>
+                            </select>
+                            <button type="submit" class="btn btn-outline-primary fw-semibold">
+                                <i class="fa-solid fa-paper-plane me-1"></i> Générer OTP
+                            </button>
+                        </div>
+                    </form>
+
+                    <form th:action="@{'/contracts/' + ${contract.id} + '/sign'}" method="post">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Sélectionner le Signataire</label>
+                            <select name="userId" class="form-select mb-3" required>
+                                <option th:each="s : ${signers}" th:value="${s.id}" th:text="${s.nomComplet}"></option>
+                            </select>
+
+                            <label class="form-label fw-semibold">Saisir le Code OTP reçu par SMS/Email</label>
+                            <input type="text" name="otp" class="form-control form-control-lg text-center fw-bold letter-spacing-2" placeholder="ex: 123456" maxlength="6" required>
+                            <small class="text-muted">Code démo par défaut : <strong>123456</strong></small>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold rounded-pill">
+                                <i class="fa-solid fa-fingerprint me-2"></i> Valider OTP &amp; Sceller la Signature
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Signatures & SHA-256 Fingerprint Card -->
+                <div class="card card-custom p-4 bg-white">
+                    <h5 class="fw-bold text-dark mb-3">
+                        <i class="fa-solid fa-shield-halved text-primary me-2"></i> Empreintes Cryptographiques SHA-256
+                    </h5>
+
+                    <div th:if="${#lists.isEmpty(contract.signatures)}" class="text-muted text-center py-3">
+                        <em>Aucune signature enregistrée pour ce contrat.</em>
+                    </div>
+
+                    <div th:each="sig : ${contract.signatures}" class="seal-stamp mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="text-success" th:text="${sig.signataire.nomComplet}"></strong>
+                            <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i> OTP VALIDE</span>
+                        </div>
+                        <div class="small text-muted mb-2" th:text="'Horodatage: ' + ${#temporals.format(sig.timestamp, 'dd/MM/yyyy HH:mm:ss')} + ' | IP: ' + ${sig.ipAddress}"></div>
+                        <div class="hash-code" th:text="${sig.hashSha256}">
+                            e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+                        </div>
+                    </div>
+
+                    <!-- Amendment Creation Section (if contract is signed) -->
+                    <div th:if="${contract.statut.name() == 'SIGNED'}" class="mt-4 pt-3 border-top">
+                        <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-code-branch text-warning me-1"></i> Établir un Avenant Modificatif</h6>
+                        <p class="text-muted small">Pour respecter l'immutabilité légale du contrat signé, tout changement créera une nouvelle version chaînée.</p>
+                        <form th:action="@{'/contracts/' + ${contract.id} + '/amend'}" method="post">
+                            <div class="mb-2">
+                                <input type="text" name="motif" class="form-control form-control-sm" placeholder="Motif de l'avenant (ex: Révision loyer)..." required>
+                            </div>
+                            <div class="mb-3">
+                                <input type="number" step="1000" name="loyer" class="form-control form-control-sm" placeholder="Nouveau Loyer (Ar)" th:value="${contract.loyer}">
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-warning w-100 fw-bold">
+                                <i class="fa-solid fa-plus-circle me-1"></i> Générer l'Avenant Modificatif
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

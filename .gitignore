@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Python / Virtual Environments ###
+venv/
+legal-audit-service/venv/
+__pycache__/
+*.pyc
+.env
+

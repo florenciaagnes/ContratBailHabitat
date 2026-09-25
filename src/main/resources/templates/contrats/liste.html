@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contrats')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container">
+    <div class="page-header">
+        <h1>Tous les contrats</h1>
+        <a th:href="@{/contrats/nouveau}" class="btn btn-primary">+ Nouveau contrat</a>
+    </div>
+
+    <div class="card">
+        <table th:if="${not #lists.isEmpty(contrats)}">
+            <thead>
+            <tr>
+                <th>N°</th>
+                <th>Propriétaire</th>
+                <th>Locataire</th>
+                <th>Début</th>
+                <th>Fin</th>
+                <th>Statut</th>
+                <th class="text-right">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${contrats}">
+                <td th:text="${c.numero}"></td>
+                <td th:text="${#lists.isEmpty(c.parties) ? '' : (c.parties[0].nomAffichage)}"></td>
+                <td th:text="${#lists.size(c.parties) < 2 ? '' : (c.parties[1].nomAffichage)}"></td>
+                <td th:text="${c.dateDebut}"></td>
+                <td th:text="${c.dateFin}"></td>
+                <td><span class="badge" th:classappend="'badge-' + ${c.statut}" th:text="${c.statut}"></span></td>
+                <td class="text-right">
+                    <a th:href="@{/contrats/{id}(id=${c.id})}" class="btn btn-sm">Voir</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="muted" th:if="${#lists.isEmpty(contrats)}">Aucun contrat pour le moment. Créez le premier contrat de bail.</p>
+    </div>
+</div>
+</body>
+</html>

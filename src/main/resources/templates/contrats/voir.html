@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contrat ' + ${contrat.numero})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container-fluid">
+    <div class="page-header">
+        <h1>
+            Contrat <span th:text="${contrat.numero}"></span>
+            <span class="badge" th:classappend="'badge-' + ${contrat.statut}" th:text="${contrat.statut}"></span>
+        </h1>
+        <div>
+            <a th:href="@{/contrats/{id}/pdf(id=${contrat.id})}" target="_blank" class="btn">Voir le PDF</a>
+            <a th:href="@{/contrats/{id}/pdf/telecharger(id=${contrat.id})}" class="btn">Télécharger</a>
+            <button type="button" class="btn btn-accent" onclick="ouvrirModalSignature()">✍ Signer</button>
+            <form th:action="@{/contrats/{id}/archiver(id=${contrat.id})}" method="post" style="display:inline;"
+                  onsubmit="return confirm('Archiver ce contrat ? Son état sera figé.');">
+                <button type="submit" class="btn btn-success" th:disabled="${contrat.statut.name() == 'ARCHIVE'}">Archiver le contrat</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="split-view">
+        <div>
+            <div class="card">
+                <h3>Bien loué</h3>
+                <p><strong th:text="${contrat.bien.adresse}"></strong></p>
+                <p class="muted" th:if="${contrat.bien.typeBien}" th:text="${contrat.bien.typeBien}"></p>
+                <p class="muted" th:if="${contrat.dateDebut}">
+                    Du <span th:text="${contrat.dateDebut}"></span>
+                    <span th:if="${contrat.dateFin}"> au <span th:text="${contrat.dateFin}"></span></span>
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Parties</h3>
+                <div th:each="p : ${contrat.parties}" style="margin-bottom:0.6rem;">
+                    <strong th:text="${p.role}"></strong> — <span th:text="${p.nomAffichage}"></span>
+                    <span class="muted" th:if="${p.typePartie.name() == 'ORGANISATION'}">
+                        (<span th:each="r, iter : ${p.organisation.representants}">
+                            <span th:text="${r.personne.nomComplet}"></span><span th:if="${!iter.last}">, </span>
+                        </span>)
+                    </span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="page-header">
+                    <h3 style="margin:0;">Articles</h3>
+                    <button type="button" class="btn btn-accent btn-sm" onclick="ouvrirModalArticle()"
+                            th:if="${contrat.statut.name() != 'ARCHIVE'}">+ Ajouter un article</button>
+                </div>
+                <div th:each="a, iter : ${contrat.articles}" style="margin-bottom:0.8rem;">
+                    <div><strong>Article <span th:text="${iter.count}"></span> : <span th:text="${a.modeleArticle.titre}"></span></strong></div>
+                    <div th:text="${a.contenuFinal}" style="white-space:pre-wrap;"></div>
+                </div>
+                <p class="muted" th:if="${#lists.isEmpty(contrat.articles)}">Aucun article pour le moment.</p>
+            </div>
+
+            <div class="card">
+                <h3>Signatures</h3>
+                <div th:each="s : ${contrat.signatures}" style="margin-bottom:0.4rem;">
+                    ✔ <span th:text="${s.personne.nomComplet}"></span>
+                    <span class="muted" th:text="${'— ' + #temporals.format(s.dateSignature, 'dd/MM/yyyy HH:mm')}"></span>
+                </div>
+                <p class="muted" th:if="${#lists.isEmpty(contrat.signatures)}">Aucune signature enregistrée.</p>
+            </div>
+        </div>
+
+        <div>
+            <div class="card muted">
+                <p>L'aperçu détaillé et fidèle à la mise en page finale est disponible via <em>« Voir le PDF »</em>.</p>
+            </div>
+            <iframe th:src="@{/contrats/{id}/pdf(id=${contrat.id})}" style="width:100%; height:80vh; border:1px solid var(--border); border-radius:8px;"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ajout d'article -->
+<div class="modal-backdrop" id="modalArticle">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Ajouter un article</h3>
+            <button type="button" onclick="fermerModalArticle()">✕</button>
+        </div>
+        <div id="modalRecherche">
+            <input type="text" id="rechercheArticle" placeholder="Rechercher un article..." oninput="rechercherArticles()"/>
+            <div id="listeArticlesDisponibles" style="margin-top:0.8rem;"></div>
+        </div>
+        <div id="modalVariables" style="display:none;">
+            <h4 id="modalArticleTitre"></h4>
+            <div id="champsVariables"></div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button type="button" class="btn" onclick="retourRechercheArticle()">Retour</button>
+                <button type="button" class="btn btn-primary" onclick="validerAjoutArticleExistant()">Ajouter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal signature -->
+<div class="modal-backdrop" id="modalSignature">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Signature</h3>
+            <button type="button" onclick="fermerModalSignature()">✕</button>
+        </div>
+        <div class="form-group">
+            <label>Signataire</label>
+            <select id="selectSignataire">
+                <option th:each="p : ${contrat.parties}" th:if="${p.typePartie.name() == 'PERSONNE'}"
+                        th:value="${p.personne.id}" th:text="${p.personne.nomComplet} + ' (' + ${p.role} + ')'"></option>
+                <th:block th:each="p : ${contrat.parties}" th:if="${p.typePartie.name() == 'ORGANISATION'}">
+                    <option th:each="r : ${p.organisation.representants}"
+                            th:value="${r.personne.id}" th:text="${r.personne.nomComplet} + ' — représentant'"></option>
+                </th:block>
+            </select>
+        </div>
+        <canvas id="canvasSignature" class="signature-pad" width="460" height="200"></canvas>
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+            <button type="button" class="btn" onclick="effacerSignature()">Effacer</button>
+            <button type="button" class="btn btn-primary" onclick="validerSignature()">Valider</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const API_ARTICLES = /*[[@{/api/articles}]]*/ '/api/articles';
+    const API_CONTRATS = /*[[@{/api/contrats}]]*/ '/api/contrats';
+    const CONTRAT_ID = /*[[${contrat.id}]]*/ 0;
+</script>
+<script th:src="@{/js/contrat-voir.js}"></script>
+<script th:src="@{/js/signature.js}"></script>
+</body>
+</html>

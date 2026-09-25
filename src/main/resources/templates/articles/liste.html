@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Bibliothèque d\'articles')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container">
+    <div class="page-header">
+        <h1>Bibliothèque d'articles</h1>
+        <a th:href="@{/articles/nouveau}" class="btn btn-primary">+ Ajouter un article</a>
+    </div>
+
+    <div class="card">
+        <table th:if="${not #lists.isEmpty(articles)}">
+            <thead>
+            <tr>
+                <th>Ordre</th>
+                <th>Code</th>
+                <th>Titre</th>
+                <th>Obligatoire</th>
+                <th>Actif</th>
+                <th class="text-right">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="a : ${articles}" th:id="'ligne-' + ${a.id}">
+                <td th:text="${a.ordreDefaut}"></td>
+                <td th:text="${a.code}"></td>
+                <td th:text="${a.titre}"></td>
+                <td th:text="${a.obligatoire ? 'Oui' : 'Non'}"></td>
+                <td>
+                    <span class="badge" th:classappend="${a.actif ? 'badge-SIGNE' : 'badge-EXPIRE'}"
+                          th:text="${a.actif ? 'Actif' : 'Inactif'}"></span>
+                </td>
+                <td class="text-right">
+                    <a th:href="@{/articles/{id}/modifier(id=${a.id})}" class="btn btn-sm">Modifier</a>
+                    <button type="button" class="btn btn-sm btn-danger" th:if="${a.actif}"
+                            th:onclick="'desactiverArticle(' + ${a.id} + ')'">Désactiver</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="muted" th:if="${#lists.isEmpty(articles)}">Aucun article dans la bibliothèque.</p>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const API_ARTICLES = /*[[@{/api/articles}]]*/ '/api/articles';
+
+    async function desactiverArticle(id) {
+        if (!confirm('Désactiver cet article ? Il ne sera plus proposé pour les nouveaux contrats.')) return;
+        const reponse = await fetch(API_ARTICLES + '/' + id, { method: 'DELETE' });
+        if (reponse.ok) {
+            window.location.reload();
+        } else {
+            alert('Impossible de désactiver cet article.');
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Nouveau contrat')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container-fluid">
+    <div class="page-header">
+        <h1>Nouveau contrat de bail</h1>
+    </div>
+
+    <div id="erreurGlobale" class="alert alert-danger" style="display:none;"></div>
+
+    <div class="split-view">
+        <!-- ============ FORMULAIRE ============ -->
+        <div id="formulaire">
+
+            <div class="card">
+                <h3>Durée &amp; bien loué</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date de début *</label>
+                        <input type="date" id="dateDebut"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Date de fin</label>
+                        <input type="date" id="dateFin"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Adresse du bien *</label>
+                    <input type="text" id="bienAdresse" placeholder="Lot ... Antananarivo"/>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Type de bien</label>
+                        <input type="text" id="bienType" placeholder="Appartement, villa..."/>
+                    </div>
+                    <div class="form-group">
+                        <label>Surface (m²)</label>
+                        <input type="number" id="bienSurface"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="bienDescription" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="card" id="blocProprietaire">
+                <h3>Propriétaire</h3>
+                <!-- rempli par JS : toujours une personne physique dans ce MVP -->
+                <div class="form-row">
+                    <div class="form-group"><label>Nom *</label><input type="text" id="propNom"/></div>
+                    <div class="form-group"><label>Prénom</label><input type="text" id="propPrenom"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>CIN *</label><input type="text" id="propCin"/></div>
+                    <div class="form-group"><label>Délivrée le</label><input type="date" id="propDateCin"/></div>
+                    <div class="form-group"><label>À</label><input type="text" id="propLieuCin"/></div>
+                </div>
+                <div class="form-group"><label>Adresse</label><input type="text" id="propAdresse"/></div>
+            </div>
+
+            <div class="card" id="blocLocataire">
+                <h3>Locataire</h3>
+                <div class="toggle-group">
+                    <button type="button" class="active" data-type="PERSONNE" onclick="basculerTypeLocataire('PERSONNE')">Personne physique</button>
+                    <button type="button" data-type="ORGANISATION" onclick="basculerTypeLocataire('ORGANISATION')">Société / Organisation</button>
+                </div>
+
+                <div id="locatairePersonne">
+                    <div class="form-row">
+                        <div class="form-group"><label>Nom *</label><input type="text" id="locNom"/></div>
+                        <div class="form-group"><label>Prénom</label><input type="text" id="locPrenom"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>CIN *</label><input type="text" id="locCin"/></div>
+                        <div class="form-group"><label>Délivrée le</label><input type="date" id="locDateCin"/></div>
+                        <div class="form-group"><label>À</label><input type="text" id="locLieuCin"/></div>
+                    </div>
+                    <div class="form-group"><label>Adresse</label><input type="text" id="locAdresse"/></div>
+                </div>
+
+                <div id="locataireOrganisation" style="display:none;">
+                    <div class="form-group"><label>Nom de la société *</label><input type="text" id="orgNom"/></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Forme juridique</label><input type="text" id="orgForme" placeholder="SARL, SA..."/></div>
+                        <div class="form-group"><label>N° d'identification</label><input type="text" id="orgNumIdent"/></div>
+                    </div>
+                    <div class="form-group"><label>Siège social</label><input type="text" id="orgSiege"/></div>
+
+                    <h4>Représentants</h4>
+                    <div id="listeRepresentants"></div>
+                    <button type="button" class="btn btn-sm" onclick="ajouterRepresentant()">+ Ajouter un représentant</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="page-header">
+                    <h3 style="margin:0;">Articles du contrat</h3>
+                    <button type="button" class="btn btn-accent btn-sm" onclick="ouvrirModalArticle()">+ Ajouter un article</button>
+                </div>
+                <div id="listeArticlesAjoutes"><p class="muted">Aucun article ajouté.</p></div>
+            </div>
+
+            <button type="button" class="btn btn-primary" onclick="creerContrat()" style="width:100%; padding:0.8rem;">
+                Créer le contrat
+            </button>
+        </div>
+
+        <!-- ============ APERCU ============ -->
+        <div>
+            <div class="preview-doc" id="apercu"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal ajout d'article -->
+<div class="modal-backdrop" id="modalArticle">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Ajouter un article</h3>
+            <button type="button" onclick="fermerModalArticle()">✕</button>
+        </div>
+        <div id="modalRecherche">
+            <input type="text" id="rechercheArticle" placeholder="Rechercher un article..." oninput="rechercherArticles()"/>
+            <div id="listeArticlesDisponibles" style="margin-top:0.8rem;"></div>
+        </div>
+        <div id="modalVariables" style="display:none;">
+            <h4 id="modalArticleTitre"></h4>
+            <div id="champsVariables"></div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button type="button" class="btn" onclick="retourRechercheArticle()">Retour</button>
+                <button type="button" class="btn btn-primary" onclick="validerAjoutArticle()">Ajouter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const API_ARTICLES = /*[[@{/api/articles}]]*/ '/api/articles';
+    const API_CONTRATS = /*[[@{/api/contrats}]]*/ '/api/contrats';
+    const URL_VOIR_CONTRAT = /*[[@{/contrats/}]]*/ '/contrats/';
+</script>
+<script th:src="@{/js/contrat-form.js}"></script>
+</body>
+</html>

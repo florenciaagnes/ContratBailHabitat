@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${article.id} == null ? 'Nouvel article' : 'Modifier l\'article')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container">
+    <div class="page-header">
+        <h1 th:text="${article.id} == null ? 'Nouvel article' : 'Modifier l\'article'"></h1>
+    </div>
+
+    <div id="erreurGlobale" class="alert alert-danger" style="display:none;"></div>
+
+    <div class="card">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Code * (identifiant unique, ex. MONTANT_LOYER)</label>
+                <input type="text" id="code" th:value="${article.code}" th:readonly="${article.id} != null"/>
+            </div>
+            <div class="form-group">
+                <label>Ordre par défaut</label>
+                <input type="number" id="ordreDefaut" th:value="${article.ordreDefaut} ?: 0"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Titre *</label>
+            <input type="text" id="titre" th:value="${article.titre}"/>
+        </div>
+        <div class="form-group">
+            <label>Contenu * — utilisez {{nom_variable}} pour les valeurs à saisir</label>
+            <textarea id="contenuModele" rows="4" th:text="${article.contenuModele}"></textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label><input type="checkbox" id="obligatoire" th:checked="${article.obligatoire}" style="width:auto; margin-right:0.4rem;"/>Article obligatoire</label>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="actif" th:checked="${article.actif} ?: true" style="width:auto; margin-right:0.4rem;"/>Actif</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-header">
+            <h3 style="margin:0;">Variables</h3>
+            <button type="button" class="btn btn-sm" onclick="ajouterLigneVariable()">+ Ajouter une variable</button>
+        </div>
+        <div id="listeVariables"></div>
+    </div>
+
+    <button type="button" class="btn btn-primary" onclick="enregistrer()" style="padding:0.7rem 1.4rem;">Enregistrer</button>
+    <a th:href="@{/articles}" class="btn">Annuler</a>
+</div>
+
+<script th:inline="javascript">
+    const ARTICLE_ID = /*[[${article.id}]]*/ null;
+    const API_ARTICLES = /*[[@{/api/articles}]]*/ '/api/articles';
+    const URL_LISTE_ARTICLES = /*[[@{/articles}]]*/ '/articles';
+</script>
+<script th:src="@{/js/article-form.js}"></script>
+</body>
+</html>

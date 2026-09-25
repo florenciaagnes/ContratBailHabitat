@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(titre)">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title th:text="${titre} + ' - Contrats de bail'">Contrats de bail</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<nav class="navbar" th:fragment="nav">
+    <div class="navbar-brand">
+        <a th:href="@{/contrats}">📄 Contrats de bail</a>
+    </div>
+    <div class="navbar-links">
+        <a th:href="@{/contrats}">Contrats</a>
+        <a th:href="@{/contrats/nouveau}" class="btn btn-primary btn-sm">+ Nouveau contrat</a>
+        <a th:href="@{/contrats/archives}">Archives</a>
+        <a th:href="@{/articles}">Bibliothèque d'articles</a>
+    </div>
+</nav>
+</body>
+</html>

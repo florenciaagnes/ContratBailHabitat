@@ -5,3 +5,6 @@ data/
 *.iml
 .vscode/
 .DS_Store
+
+pom.xml
+application.propreties

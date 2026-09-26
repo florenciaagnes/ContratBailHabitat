@@ -144,3 +144,8 @@ CREATE TABLE document_contrat (
     hash_document       VARCHAR(128)
 );
 CREATE INDEX idx_document_contrat ON document_contrat (id_contrat);
+
+CREATE TABLE mode_payement(
+        id                  BIGSERIAL PRIMARY KEY,
+        libelle             VARCHAR(12)
+)

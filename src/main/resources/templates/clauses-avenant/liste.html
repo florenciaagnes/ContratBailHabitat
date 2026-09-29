@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Bibliothèque de clauses d\'avenant')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container">
+    <div class="page-header">
+        <h1>Bibliothèque de clauses d'avenant</h1>
+        <a th:href="@{/clauses-avenant/nouveau}" class="btn btn-primary">+ Ajouter une clause</a>
+    </div>
+
+    <div class="card">
+        <table th:if="${not #lists.isEmpty(clauses)}">
+            <thead>
+            <tr>
+                <th>Ordre</th>
+                <th>Code</th>
+                <th>Titre</th>
+                <th>Actif</th>
+                <th class="text-right">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${clauses}">
+                <td th:text="${c.ordreDefaut}"></td>
+                <td th:text="${c.code}"></td>
+                <td th:text="${c.titre}"></td>
+                <td>
+                    <span class="badge" th:classappend="${c.actif ? 'badge-SIGNE' : 'badge-EXPIRE'}"
+                          th:text="${c.actif ? 'Actif' : 'Inactif'}"></span>
+                </td>
+                <td class="text-right">
+                    <a th:href="@{/clauses-avenant/{id}/modifier(id=${c.id})}" class="btn btn-sm">Modifier</a>
+                    <button type="button" class="btn btn-sm btn-danger" th:if="${c.actif}"
+                            th:onclick="'desactiverClause(' + ${c.id} + ')'">Désactiver</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="muted" th:if="${#lists.isEmpty(clauses)}">Aucune clause dans la bibliothèque.</p>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const API_CLAUSES = /*[[@{/api/clauses-avenant}]]*/ '/api/clauses-avenant';
+
+    async function desactiverClause(id) {
+        if (!confirm("Désactiver cette clause ? Elle ne sera plus proposée pour les nouveaux avenants.")) return;
+        const reponse = await fetch(API_CLAUSES + '/' + id, { method: 'DELETE' });
+        if (reponse.ok) {
+            window.location.reload();
+        } else {
+            alert("Impossible de désactiver cette clause.");
+        }
+    }
+</script>
+</body>
+</html>

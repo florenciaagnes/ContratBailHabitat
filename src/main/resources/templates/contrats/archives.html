@@ -18,7 +18,7 @@
                 <label>Statut</label>
                 <select name="statut">
                     <option value="">Tous</option>
-                    <option th:each="s : ${statuts}" th:value="${s}" th:text="${s}" th:selected="${s == statut}"></option>
+                    <option th:each="s : ${statuts}" th:value="${s}" th:text="${s.libelle}" th:selected="${s == statut}"></option>
                 </select>
             </div>
             <div class="form-group">
@@ -57,7 +57,10 @@
                 <td th:text="${#temporals.format(c.dateCreation, 'dd/MM/yyyy')}"></td>
                 <td th:text="${c.dateDebut}"></td>
                 <td th:text="${c.dateFin}"></td>
-                <td><span class="badge" th:classappend="'badge-' + ${c.statut}" th:text="${c.statut}"></span></td>
+                <td>
+                    <span th:each="st : ${c.statutsAffiches}" class="badge" th:classappend="'badge-' + ${st}"
+                          th:text="${st.libelle}" style="margin-right:0.25rem;"></span>
+                </td>
                 <td class="text-right">
                     <a th:href="@{/contrats/{id}(id=${c.id})}" class="btn btn-sm">Voir</a>
                     <a th:href="@{/contrats/{id}/pdf(id=${c.id})}" target="_blank" class="btn btn-sm">PDF</a>

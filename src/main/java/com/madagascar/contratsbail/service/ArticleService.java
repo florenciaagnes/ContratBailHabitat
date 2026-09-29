@@ -2,7 +2,9 @@ package com.madagascar.contratsbail.service;
 
 import com.madagascar.contratsbail.entity.ModeleArticle;
 import com.madagascar.contratsbail.entity.VariableArticle;
+import com.madagascar.contratsbail.entity.enums.TypeVariable;
 import com.madagascar.contratsbail.exception.RessourceIntrouvableException;
+import com.madagascar.contratsbail.exception.ValidationMetierException;
 import com.madagascar.contratsbail.repository.ModeleArticleRepository;
 import com.madagascar.contratsbail.repository.VariableArticleRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,7 @@ public class ArticleService {
         ModeleArticle enregistre = modeleArticleRepository.save(modeleArticle);
         if (modeleArticle.getVariables() != null) {
             for (VariableArticle v : modeleArticle.getVariables()) {
+                validerVariable(v);
                 v.setId(null);
                 v.setModeleArticle(enregistre);
                 variableArticleRepository.save(v);
@@ -76,6 +79,7 @@ public class ArticleService {
 
     public VariableArticle ajouterVariable(Long idModeleArticle, VariableArticle variable) {
         ModeleArticle modele = obtenir(idModeleArticle);
+        validerVariable(variable);
         variable.setId(null);
         variable.setModeleArticle(modele);
         return variableArticleRepository.save(variable);
@@ -84,5 +88,29 @@ public class ArticleService {
     @Transactional(readOnly = true)
     public List<VariableArticle> listerVariables(Long idModeleArticle) {
         return variableArticleRepository.findByModeleArticleIdOrderByOrdreAsc(idModeleArticle);
+    }
+
+    /** Met a jour une variable existante (le nom reste inchange : il est reference par {{nom}}). */
+    public VariableArticle modifierVariable(Long idModeleArticle, Long idVariable, VariableArticle donnees) {
+        VariableArticle v = variableArticleRepository.findById(idVariable)
+                .orElseThrow(() -> new RessourceIntrouvableException("Variable introuvable : id=" + idVariable));
+        if (!v.getModeleArticle().getId().equals(idModeleArticle)) {
+            throw new ValidationMetierException("Cette variable n'appartient pas à cet article.");
+        }
+        v.setLibelle(donnees.getLibelle());
+        v.setType(donnees.getType());
+        v.setObligatoire(donnees.getObligatoire() == null ? Boolean.TRUE : donnees.getObligatoire());
+        v.setOrdre(donnees.getOrdre() == null ? v.getOrdre() : donnees.getOrdre());
+        v.setValeurAuto(donnees.getValeurAuto());
+        v.setOptions(donnees.getOptions());
+        validerVariable(v);
+        return variableArticleRepository.save(v);
+    }
+
+    private void validerVariable(VariableArticle v) {
+        if (v.getType() == TypeVariable.LISTE && v.getOptionsListe().isEmpty()) {
+            throw new ValidationMetierException("La variable '" + v.getNom()
+                    + "' est de type LISTE : renseignez au moins une option.");
+        }
     }
 }

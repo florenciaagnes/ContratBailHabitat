@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Avenant ' + ${avenant.numero})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container-fluid">
+    <div class="page-header">
+        <h1>
+            Avenant <span th:text="${avenant.numero}"></span>
+            <span class="badge" th:classappend="'badge-' + ${avenant.statut}" th:text="${avenant.statut}"></span>
+        </h1>
+        <div>
+            <a th:href="@{/contrats/{id}(id=${contrat.id})}" class="btn">← Contrat</a>
+            <a th:href="@{/avenants/{id}/pdf(id=${avenant.id})}" target="_blank" class="btn">Voir le PDF</a>
+            <a th:href="@{/avenants/{id}/pdf/telecharger(id=${avenant.id})}" class="btn">Télécharger</a>
+            <button type="button" class="btn btn-accent" onclick="ouvrirModalSignature()"
+                    th:disabled="${avenant.statut.name() == 'ARCHIVE'}">✍ Signer</button>
+            <form th:action="@{/avenants/{id}/archiver(id=${avenant.id})}" method="post" style="display:inline;"
+                  onsubmit="return confirm('Archiver cet avenant ? Son état sera figé.');">
+                <button type="submit" class="btn btn-success"
+                        th:disabled="${avenant.statut.name() == 'ARCHIVE'}">Archiver l'avenant</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="split-view">
+        <div>
+            <div class="card">
+                <h3>Avenant</h3>
+                <p><strong th:text="${avenant.objet}"></strong></p>
+                <p class="muted">
+                    Contrat <a th:href="@{/contrats/{id}(id=${contrat.id})}" th:text="${contrat.numero}"></a><br/>
+                    Date d'effet : <span th:text="${#temporals.format(avenant.dateEffet, 'dd/MM/yyyy')}"></span>
+                    <span th:if="${avenant.nouvelleDateFin != null}">
+                        <br/>Nouvelle date de fin :
+                        <strong th:text="${#temporals.format(avenant.nouvelleDateFin, 'dd/MM/yyyy')}"></strong>
+                    </span>
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Clauses</h3>
+                <div th:each="c, iter : ${avenant.clauses}" style="margin-bottom:0.8rem;">
+                    <div><strong>Article <span th:text="${iter.count}"></span> : <span th:text="${c.titre}"></span></strong></div>
+                    <div th:text="${c.contenu}" style="white-space:pre-wrap;"></div>
+                </div>
+                <p class="muted" th:if="${#lists.isEmpty(avenant.clauses)}">
+                    Aucune clause (l'avenant ne modifie que la date de fin).
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Signatures</h3>
+                <div th:each="s : ${avenant.signatures}" style="margin-bottom:0.4rem;">
+                    ✔ <span th:text="${s.personne.nomComplet}"></span>
+                    <span class="muted" th:text="${'— ' + #temporals.format(s.dateSignature, 'dd/MM/yyyy HH:mm')}"></span>
+                </div>
+                <p class="muted" th:if="${#lists.isEmpty(avenant.signatures)}">Aucune signature enregistrée.</p>
+            </div>
+        </div>
+
+        <div>
+            <iframe th:src="@{/avenants/{id}/pdf(id=${avenant.id})}"
+                    style="width:100%; height:80vh; border:1px solid var(--border); border-radius:8px;"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Modal signature -->
+<div class="modal-backdrop" id="modalSignature">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Signature</h3>
+            <button type="button" onclick="fermerModalSignature()">✕</button>
+        </div>
+        <div class="form-group">
+            <label>Signataire</label>
+            <select id="selectSignataire">
+                <option th:each="p : ${contrat.parties}" th:if="${p.typePartie.name() == 'PERSONNE'}"
+                        th:value="${p.personne.id}" th:text="${p.personne.nomComplet} + ' (' + ${p.role} + ')'"></option>
+                <th:block th:each="p : ${contrat.parties}" th:if="${p.typePartie.name() == 'ORGANISATION'}">
+                    <option th:each="r : ${p.organisation.representants}"
+                            th:value="${r.personne.id}" th:text="${r.personne.nomComplet} + ' — représentant'"></option>
+                </th:block>
+            </select>
+        </div>
+        <canvas id="canvasSignature" class="signature-pad" width="460" height="200"></canvas>
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+            <button type="button" class="btn" onclick="effacerSignature()">Effacer</button>
+            <button type="button" class="btn btn-primary" onclick="validerSignature()">Valider</button>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // signature.js poste sur `${API_CONTRATS}/${CONTRAT_ID}/signatures` :
+    // ici on le pointe vers l'API des avenants (/api/avenants/{id}/signatures).
+    const API_CONTRATS = /*[[@{/api/avenants}]]*/ '/api/avenants';
+    const CONTRAT_ID = /*[[${avenant.id}]]*/ 0;
+</script>
+<script th:src="@{/js/signature.js}"></script>
+</body>
+</html>

@@ -6,5 +6,6 @@ public enum TypeVariable {
     MONEY,
     DATE,
     BOOLEAN,
-    TEXTAREA
+    TEXTAREA,
+    LISTE
 }

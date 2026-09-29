@@ -46,11 +46,17 @@ async function selectionnerArticle(id) {
     const conteneur = document.getElementById('champsVariables');
     conteneur.innerHTML = '';
     (article.variables || []).forEach(v => {
+        if (v.valeurAuto) return; // reprise automatique du contrat (dates)
         const div = document.createElement('div');
         div.className = 'form-group';
         const typeInput = { NUMBER: 'number', MONEY: 'number', DATE: 'date' }[v.type] || 'text';
         if (v.type === 'TEXTAREA') {
             div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><textarea rows="3" data-var-nom="${v.nom}"></textarea>`;
+        } else if (v.type === 'BOOLEAN') {
+            div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><select data-var-nom="${v.nom}"><option value="Oui">Oui</option><option value="Non">Non</option></select>`;
+        } else if (v.type === 'LISTE') {
+            const options = (v.optionsListe || []).map(o => `<option value="${o}">${o}</option>`).join('');
+            div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><select data-var-nom="${v.nom}"><option value="">— Choisir —</option>${options}</select>`;
         } else {
             div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><input type="${typeInput}" data-var-nom="${v.nom}"/>`;
         }

@@ -73,6 +73,17 @@ public class Contrat {
     @Builder.Default
     private List<DocumentContrat> documents = new ArrayList<>();
 
+    @OneToMany(mappedBy = "contrat", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("dateStatut ASC, id ASC")
+    @JsonIgnore
+    @Builder.Default
+    private List<ContratStatut> statuts = new ArrayList<>();
+
+    /** Tous les statuts detenus par le contrat, dans l'ordre d'affichage (BROUILLON ... EXPIRE). */
+    public List<StatutContrat> getStatutsAffiches() {
+        return statuts.stream().map(ContratStatut::getStatut).distinct().sorted().toList();
+    }
+
     @PrePersist
     void prePersist() {
         if (dateCreation == null) {

@@ -26,13 +26,20 @@ public class DocumentStorageService {
     private final StorageProperties storageProperties;
     private final DocumentContratRepository documentContratRepository;
 
+    /** PDF du contrat : BAIL-2026-001.pdf */
     @Transactional
     public DocumentContrat enregistrer(Contrat contrat, byte[] contenuPdf, boolean archiver) {
+        return enregistrer(contrat, contrat.getNumero() + ".pdf", "PDF_CONTRAT", contenuPdf, archiver);
+    }
+
+    /** PDF quelconque rattache a un contrat (ex. avenant : BAIL-2026-001-AV1.pdf). */
+    @Transactional
+    public DocumentContrat enregistrer(Contrat contrat, String nomFichier, String typeDocument,
+                                       byte[] contenuPdf, boolean archiver) {
         try {
             Path repertoire = Path.of(storageProperties.getStoragePath());
             Files.createDirectories(repertoire);
 
-            String nomFichier = contrat.getNumero() + ".pdf";
             Path chemin = repertoire.resolve(nomFichier);
             Files.write(chemin, contenuPdf);
 
@@ -40,7 +47,7 @@ public class DocumentStorageService {
                     .contrat(contrat)
                     .nomFichier(nomFichier)
                     .cheminFichier(chemin.toAbsolutePath().toString())
-                    .typeDocument("PDF_CONTRAT")
+                    .typeDocument(typeDocument)
                     .dateGeneration(LocalDateTime.now())
                     .dateArchivage(archiver ? LocalDateTime.now() : null)
                     .hashDocument(calculerHash(contenuPdf))
@@ -48,7 +55,7 @@ public class DocumentStorageService {
 
             return documentContratRepository.save(document);
         } catch (IOException e) {
-            throw new IllegalStateException("Impossible d'enregistrer le PDF du contrat " + contrat.getNumero(), e);
+            throw new IllegalStateException("Impossible d'enregistrer le PDF " + nomFichier, e);
         }
     }
 
@@ -63,8 +70,7 @@ public class DocumentStorageService {
     private String calculerHash(byte[] contenu) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(contenu);
-            return HexFormat.of().formatHex(hash);
+            return HexFormat.of().formatHex(digest.digest(contenu));
         } catch (NoSuchAlgorithmException e) {
             return null;
         }

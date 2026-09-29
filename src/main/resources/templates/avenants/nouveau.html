@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Nouvel avenant')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container">
+    <div class="page-header">
+        <h1>Nouvel avenant — contrat <span th:text="${contrat.numero}"></span></h1>
+        <a th:href="@{/contrats/{id}(id=${contrat.id})}" class="btn">← Retour au contrat</a>
+    </div>
+
+    <div id="erreurGlobale" class="alert alert-danger" style="display:none;"></div>
+    <div class="alert alert-warning"
+         th:if="${contrat.statut.name() != 'ARCHIVE' and contrat.statut.name() != 'SIGNE'}">
+        Un avenant ne peut être créé que pour un contrat signé et archivé.
+    </div>
+
+    <div class="card">
+        <h3>Contrat concerné</h3>
+        <p><strong th:text="${contrat.numero}"></strong>
+           <span class="badge" th:classappend="'badge-' + ${contrat.statut}" th:text="${contrat.statut}"></span></p>
+        <p class="muted">
+            Bien : <span th:text="${contrat.bien.adresse}"></span><br/>
+            Période :
+            <span th:text="${contrat.dateDebut != null ? #temporals.format(contrat.dateDebut, 'dd/MM/yyyy') : '—'}"></span>
+            →
+            <span th:text="${contrat.dateFin != null ? #temporals.format(contrat.dateFin, 'dd/MM/yyyy') : '—'}"></span>
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Avenant</h3>
+        <div class="form-group">
+            <label>Objet de l'avenant *</label>
+            <input type="text" id="objet" placeholder="Ex. Révision du loyer, prolongation de la durée..."/>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date d'effet *</label>
+                <input type="date" id="dateEffet"/>
+            </div>
+            <div class="form-group">
+                <label>Nouvelle date de fin du bail (facultatif)</label>
+                <input type="date" id="nouvelleDateFin"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-header">
+            <h3 style="margin:0;">Clauses</h3>
+            <button type="button" class="btn btn-accent btn-sm" onclick="ouvrirModalClause()">+ Ajouter une clause</button>
+        </div>
+        <p class="muted">Un avenant doit contenir au moins une clause ou une nouvelle date de fin.</p>
+        <div id="listeClauses"><p class="muted">Aucune clause ajoutée.</p></div>
+    </div>
+
+    <button type="button" class="btn btn-primary" onclick="creerAvenant()" style="padding:0.7rem 1.4rem;">
+        Créer l'avenant
+    </button>
+</div>
+
+<!-- Modal ajout d'une clause (meme principe que l'ajout d'un article a un contrat) -->
+<div class="modal-backdrop" id="modalClause">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Ajouter une clause</h3>
+            <button type="button" onclick="fermerModalClause()">✕</button>
+        </div>
+        <div id="modalClauseRecherche">
+            <input type="text" id="rechercheClause" placeholder="Rechercher une clause..." oninput="rechercherClauses()"/>
+            <div id="listeClausesDisponibles" style="margin-top:0.8rem;"></div>
+        </div>
+        <div id="modalClauseVariables" style="display:none;">
+            <h4 id="modalClauseTitre"></h4>
+            <div id="champsVariablesClause"></div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button type="button" class="btn" onclick="retourRechercheClause()">Retour</button>
+                <button type="button" class="btn btn-primary" onclick="validerAjoutClause()">Ajouter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    const CONTRAT_ID = /*[[${contrat.id}]]*/ 0;
+    const API_CONTRATS = /*[[@{/api/contrats}]]*/ '/api/contrats';
+    const API_CLAUSES = /*[[@{/api/clauses-avenant}]]*/ '/api/clauses-avenant';
+    const URL_AVENANT = /*[[@{/avenants/}]]*/ '/avenants/';
+</script>
+<script th:src="@{/js/avenant-form.js}"></script>
+</body>
+</html>

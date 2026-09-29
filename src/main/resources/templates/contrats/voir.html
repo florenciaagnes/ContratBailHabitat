@@ -7,7 +7,8 @@
     <div class="page-header">
         <h1>
             Contrat <span th:text="${contrat.numero}"></span>
-            <span class="badge" th:classappend="'badge-' + ${contrat.statut}" th:text="${contrat.statut}"></span>
+            <span th:each="st : ${contrat.statutsAffiches}" class="badge" th:classappend="'badge-' + ${st}"
+                  th:text="${st.libelle}" style="margin-right:0.25rem;"></span>
         </h1>
         <div>
             <a th:href="@{/contrats/{id}/pdf(id=${contrat.id})}" target="_blank" class="btn">Voir le PDF</a>
@@ -55,6 +56,30 @@
                     <div th:text="${a.contenuFinal}" style="white-space:pre-wrap;"></div>
                 </div>
                 <p class="muted" th:if="${#lists.isEmpty(contrat.articles)}">Aucun article pour le moment.</p>
+            </div>
+
+            <div class="card">
+                <div class="page-header">
+                    <h3 style="margin:0;">Avenants</h3>
+                    <a th:if="${contrat.statut.name() == 'ARCHIVE' or contrat.statut.name() == 'SIGNE'}"
+                       th:href="@{/contrats/{id}/avenants/nouveau(id=${contrat.id})}"
+                       class="btn btn-accent btn-sm">+ Nouvel avenant</a>
+                </div>
+                <p class="muted" th:if="${dateFinEffective != null}">
+                    Date de fin effective (avenants archivés) :
+                    <strong th:text="${#temporals.format(dateFinEffective, 'dd/MM/yyyy')}"></strong>
+                </p>
+                <div th:each="a : ${avenants}" style="margin-bottom:0.4rem;">
+                    <a th:href="@{/avenants/{id}(id=${a.id})}" th:text="${a.numero}"></a>
+                    — <span th:text="${a.objet}"></span>
+                    <span class="badge" th:classappend="'badge-' + ${a.statut}" th:text="${a.statut}"></span>
+                </div>
+                <p class="muted" th:if="${#lists.isEmpty(avenants)}">
+                    Aucun avenant.
+                    <span th:if="${contrat.statut.name() != 'ARCHIVE' and contrat.statut.name() != 'SIGNE'}">
+                        Un avenant peut être créé une fois le contrat signé et archivé.
+                    </span>
+                </p>
             </div>
 
             <div class="card">

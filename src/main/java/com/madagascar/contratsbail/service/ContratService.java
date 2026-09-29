@@ -3,11 +3,15 @@ package com.madagascar.contratsbail.service;
 import com.madagascar.contratsbail.dto.*;
 import com.madagascar.contratsbail.entity.*;
 import com.madagascar.contratsbail.entity.enums.RolePartie;
+import com.madagascar.contratsbail.entity.enums.SourceValeurAuto;
 import com.madagascar.contratsbail.entity.enums.StatutContrat;
 import com.madagascar.contratsbail.entity.enums.TypePartie;
+import com.madagascar.contratsbail.entity.enums.TypeVariable;
 import com.madagascar.contratsbail.exception.RessourceIntrouvableException;
 import com.madagascar.contratsbail.exception.ValidationMetierException;
 import com.madagascar.contratsbail.repository.*;
+import com.madagascar.contratsbail.util.CinValidator;
+import com.madagascar.contratsbail.util.TypesBien;
 import com.madagascar.contratsbail.util.VariableSubstitutionUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -18,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,6 +45,7 @@ public class ContratService {
 
     private final PdfGenerationService pdfGenerationService;
     private final DocumentStorageService documentStorageService;
+    private final StatutContratService statutContratService;
 
     /** Si vrai, la signature de toutes les parties est obligatoire avant archivage. */
     private final boolean signatureObligatoireAvantArchivage = true;
@@ -61,6 +67,7 @@ public class ContratService {
                 .statut(StatutContrat.BROUILLON)
                 .build();
         contrat = contratRepository.save(contrat);
+        statutContratService.ajouter(contrat, StatutContrat.BROUILLON);
 
         PartieContrat proprietaire = construirePartie(requete.getProprietaire(), RolePartie.PROPRIETAIRE, 0, contrat);
         PartieContrat locataire = construirePartie(requete.getLocataire(), RolePartie.LOCATAIRE, 1, contrat);
@@ -74,6 +81,7 @@ public class ContratService {
             }
         }
 
+        statutContratService.synchroniserExpiration(contrat);
         return obtenir(contrat.getId());
     }
 
@@ -87,6 +95,10 @@ public class ContratService {
         if (requete.getBien() == null || requete.getBien().getAdresse() == null || requete.getBien().getAdresse().isBlank()) {
             throw new ValidationMetierException("L'adresse du bien loué est obligatoire.");
         }
+        if (!TypesBien.estValide(requete.getBien().getTypeBien())) {
+            throw new ValidationMetierException("Type de bien invalide : choisissez une valeur de la liste ("
+                    + String.join(", ", TypesBien.VALEURS) + ").");
+        }
         validerPartie(requete.getProprietaire(), "propriétaire");
         validerPartie(requete.getLocataire(), "locataire");
     }
@@ -99,9 +111,7 @@ public class ContratService {
             if (partie.getPersonne() == null || partie.getPersonne().getNom() == null || partie.getPersonne().getNom().isBlank()) {
                 throw new ValidationMetierException("Le nom du " + role + " est obligatoire.");
             }
-            if (partie.getPersonne().getCin() == null || partie.getPersonne().getCin().isBlank()) {
-                throw new ValidationMetierException("Le CIN du " + role + " est obligatoire.");
-            }
+            CinValidator.valider(partie.getPersonne().getCin(), "du " + role);
         } else {
             if (partie.getOrganisation() == null || partie.getOrganisation().getNom() == null || partie.getOrganisation().getNom().isBlank()) {
                 throw new ValidationMetierException("Le nom de la société (" + role + ") est obligatoire.");
@@ -113,9 +123,8 @@ public class ContratService {
                 if (r.getPersonne() == null || r.getPersonne().getNom() == null || r.getPersonne().getNom().isBlank()) {
                     throw new ValidationMetierException("Le nom de chaque représentant est obligatoire.");
                 }
-                if (r.getPersonne().getCin() == null || r.getPersonne().getCin().isBlank()) {
-                    throw new ValidationMetierException("Le CIN de chaque représentant est obligatoire.");
-                }
+                CinValidator.valider(r.getPersonne().getCin(),
+                        "du représentant " + r.getPersonne().getNom());
             }
         }
     }
@@ -154,7 +163,7 @@ public class ContratService {
                 : new Personne();
         personne.setNom(dto.getNom());
         personne.setPrenom(dto.getPrenom());
-        personne.setCin(dto.getCin());
+        personne.setCin(CinValidator.normaliser(dto.getCin()));
         personne.setDateDelivranceCin(dto.getDateDelivranceCin());
         personne.setLieuDelivranceCin(dto.getLieuDelivranceCin());
         personne.setAdresse(dto.getAdresse());
@@ -200,6 +209,7 @@ public class ContratService {
 
     public ContratArticle ajouterArticle(Long idContrat, AjoutArticleRequest requete) {
         Contrat contrat = obtenir(idContrat);
+        verifierModifiable(contrat);
         int ordreSuivant = contrat.getArticles().stream()
                 .mapToInt(ContratArticle::getOrdre).max().orElse(0) + 1;
         ContratArticle article = ajouterArticleInterne(contrat, requete, ordreSuivant);
@@ -213,10 +223,28 @@ public class ContratService {
         List<VariableArticle> variablesDefinies = variableArticleRepository
                 .findByModeleArticleIdOrderByOrdreAsc(modele.getId());
 
-        Map<String, String> valeursSaisies = requete.getVariables() == null ? Map.of() :
-                requete.getVariables().stream()
-                        .filter(v -> v.getNom() != null)
-                        .collect(Collectors.toMap(VariableValeurDto::getNom, v -> v.getValeur() == null ? "" : v.getValeur(), (a, b) -> b));
+        Map<String, String> valeursSaisies = new HashMap<>();
+        if (requete.getVariables() != null) {
+            for (VariableValeurDto vv : requete.getVariables()) {
+                if (vv.getNom() != null) {
+                    valeursSaisies.put(vv.getNom(), vv.getValeur() == null ? "" : vv.getValeur());
+                }
+            }
+        }
+
+        // Variables a valeur automatique : reprises du contrat (section Duree & bien loue)
+        for (VariableArticle v : variablesDefinies) {
+            if (v.getValeurAuto() != null) {
+                String auto = valeurAutomatique(v.getValeurAuto(), contrat);
+                if (auto != null) {
+                    valeursSaisies.put(v.getNom(), auto);
+                } else if (Boolean.TRUE.equals(v.getObligatoire())) {
+                    String quoi = v.getValeurAuto() == SourceValeurAuto.DATE_DEBUT ? "date de début" : "date de fin";
+                    throw new ValidationMetierException("L'article « " + modele.getTitre() + " » utilise la "
+                            + quoi + " du bail : renseignez-la dans la section Durée avant d'ajouter cet article.");
+                }
+            }
+        }
 
         for (VariableArticle v : variablesDefinies) {
             if (Boolean.TRUE.equals(v.getObligatoire())) {
@@ -224,6 +252,15 @@ public class ContratService {
                 if (val == null || val.isBlank()) {
                     throw new ValidationMetierException("La variable '" + v.getLibelle() + "' est obligatoire pour l'article " + modele.getTitre() + ".");
                 }
+            }
+        }
+
+        for (VariableArticle v : variablesDefinies) {
+            String val = valeursSaisies.get(v.getNom());
+            if (v.getType() == TypeVariable.LISTE && val != null && !val.isBlank()
+                    && !v.getOptionsListe().contains(val)) {
+                throw new ValidationMetierException("La valeur choisie pour '" + v.getLibelle()
+                        + "' ne fait pas partie de la liste autorisée.");
             }
         }
 
@@ -252,9 +289,22 @@ public class ContratService {
         return contratArticle;
     }
 
+    private void verifierModifiable(Contrat contrat) {
+        if (contrat.getStatut() == StatutContrat.SIGNE || contrat.getStatut() == StatutContrat.ARCHIVE) {
+            throw new ValidationMetierException(
+                    "Ce contrat est signé ou archivé : il ne peut plus être modifié. Utilisez un avenant pour le compléter.");
+        }
+    }
+
+    private String valeurAutomatique(SourceValeurAuto source, Contrat contrat) {
+        LocalDate date = source == SourceValeurAuto.DATE_DEBUT ? contrat.getDateDebut() : contrat.getDateFin();
+        return date == null ? null : date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+    }
+
     public void supprimerArticle(Long idContrat, Long idContratArticle) {
         ContratArticle article = contratArticleRepository.findById(idContratArticle)
                 .orElseThrow(() -> new RessourceIntrouvableException("Article introuvable"));
+        verifierModifiable(article.getContrat());
         if (!article.getContrat().getId().equals(idContrat)) {
             throw new ValidationMetierException("Cet article n'appartient pas à ce contrat.");
         }
@@ -263,6 +313,7 @@ public class ContratService {
 
     public void reordonnerArticles(Long idContrat, List<Long> idsEnOrdre) {
         Contrat contrat = obtenir(idContrat);
+        verifierModifiable(contrat);
         Map<Long, ContratArticle> parId = contrat.getArticles().stream()
                 .collect(Collectors.toMap(ContratArticle::getId, a -> a));
         int ordre = 1;
@@ -281,27 +332,51 @@ public class ContratService {
 
     public Signature signer(Long idContrat, SignatureRequest requete) {
         Contrat contrat = obtenir(idContrat);
-        Personne personne = personneRepository.findById(requete.getIdPersonne())
-                .orElseThrow(() -> new RessourceIntrouvableException("Personne introuvable"));
-
         if (requete.getSignatureData() == null || requete.getSignatureData().isBlank()) {
             throw new ValidationMetierException("La signature est vide.");
         }
+        if (requete.getIdPersonne() == null) {
+            throw new ValidationMetierException("Sélectionnez un signataire.");
+        }
+        if (contrat.getStatut() == StatutContrat.ARCHIVE) {
+            throw new ValidationMetierException("Ce contrat est archivé : il ne peut plus être signé.");
+        }
+        Personne personne = personneRepository.findById(requete.getIdPersonne())
+                .orElseThrow(() -> new RessourceIntrouvableException("Personne introuvable"));
 
-        int ordreSuivant = contrat.getSignatures().size();
+        List<Personne> attendus = signatairesAttendus(contrat);
+        if (attendus.stream().noneMatch(p -> p.getId().equals(personne.getId()))) {
+            throw new ValidationMetierException("Cette personne n'est pas partie au contrat.");
+        }
+        Set<Long> idsSignes = contrat.getSignatures().stream()
+                .map(sg -> sg.getPersonne().getId()).collect(Collectors.toSet());
+        if (idsSignes.contains(personne.getId())) {
+            throw new ValidationMetierException(personne.getNomComplet() + " a déjà signé ce contrat.");
+        }
+
         Signature signature = Signature.builder()
                 .contrat(contrat)
                 .personne(personne)
                 .signatureData(requete.getSignatureData())
                 .typeSignature(com.madagascar.contratsbail.entity.enums.TypeSignature.DESSINEE)
-                .ordre(ordreSuivant)
+                .ordre(contrat.getSignatures().size())
                 .build();
         signature = signatureRepository.save(signature);
+        contrat.getSignatures().add(signature);
+        idsSignes.add(personne.getId());
 
         if (contrat.getStatut() == StatutContrat.BROUILLON) {
             contrat.setStatut(StatutContrat.EN_ATTENTE_SIGNATURE);
-            contratRepository.save(contrat);
+            statutContratService.ajouter(contrat, StatutContrat.EN_ATTENTE_SIGNATURE);
         }
+        // Toutes les parties (personnes / representants) ont signe : le contrat est SIGNE
+        boolean tousOntSigne = attendus.stream().allMatch(p -> idsSignes.contains(p.getId()));
+        if (tousOntSigne && contrat.getStatut() != StatutContrat.SIGNE) {
+            contrat.setStatut(StatutContrat.SIGNE);
+            contrat.setDateSignature(LocalDateTime.now());
+            statutContratService.ajouter(contrat, StatutContrat.SIGNE);
+        }
+        contratRepository.save(contrat);
         return signature;
     }
 
@@ -316,6 +391,9 @@ public class ContratService {
 
     public DocumentContrat archiver(Long idContrat) {
         Contrat contrat = obtenir(idContrat);
+        if (contrat.getStatut() == StatutContrat.ARCHIVE) {
+            throw new ValidationMetierException("Ce contrat est déjà archivé.");
+        }
 
         if (signatureObligatoireAvantArchivage) {
             List<Personne> signatairesAttendus = signatairesAttendus(contrat);
@@ -337,7 +415,10 @@ public class ContratService {
         if (contrat.getDateSignature() == null) {
             contrat.setDateSignature(LocalDateTime.now());
         }
+        statutContratService.ajouter(contrat, StatutContrat.SIGNE);
+        statutContratService.ajouter(contrat, StatutContrat.ARCHIVE);
         contratRepository.save(contrat);
+        statutContratService.synchroniserExpiration(contrat);
 
         return document;
     }
@@ -363,7 +444,6 @@ public class ContratService {
     public Contrat obtenir(Long id) {
         Contrat contrat = contratRepository.findById(id)
                 .orElseThrow(() -> new RessourceIntrouvableException("Contrat introuvable : id=" + id));
-        contrat.setStatut(calculerStatutEffectif(contrat));
         return contrat;
     }
 
@@ -395,19 +475,5 @@ public class ContratService {
                 .and(ContratSpecifications.dateCreationAvant(fin));
 
         return contratRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "dateCreation"));
-    }
-
-    /**
-     * Calcule le statut effectif d'un contrat en tenant compte de la date de fin,
-     * sans jamais ecraser un statut terminal (ARCHIVE, RESILIE) saisi manuellement.
-     */
-    private StatutContrat calculerStatutEffectif(Contrat contrat) {
-        if (contrat.getStatut() == StatutContrat.ARCHIVE || contrat.getStatut() == StatutContrat.RESILIE) {
-            return contrat.getStatut();
-        }
-        if (contrat.getDateFin() != null && contrat.getDateFin().isBefore(LocalDate.now())) {
-            return StatutContrat.EXPIRE;
-        }
-        return contrat.getStatut();
     }
 }

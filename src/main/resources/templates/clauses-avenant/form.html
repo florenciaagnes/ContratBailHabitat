@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${clause.id} == null ? 'Nouvelle clause' : 'Modifier la clause')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<div class="container">
+    <div class="page-header">
+        <h1 th:text="${clause.id} == null ? 'Nouvelle clause d\'avenant' : 'Modifier la clause'"></h1>
+    </div>
+
+    <div id="erreurGlobale" class="alert alert-danger" style="display:none;"></div>
+
+    <div class="card">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Code * (identifiant unique, ex. REVISION_LOYER)</label>
+                <input type="text" id="code" th:value="${clause.code}" th:readonly="${clause.id} != null"/>
+            </div>
+            <div class="form-group">
+                <label>Ordre par défaut</label>
+                <input type="number" id="ordreDefaut" th:value="${clause.ordreDefaut} ?: 0"/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Titre * (affiché comme titre d'article dans le PDF de l'avenant)</label>
+            <input type="text" id="titre" th:value="${clause.titre}"/>
+        </div>
+        <div class="form-group">
+            <label>Contenu * — utilisez {{nom_variable}} pour les valeurs à saisir</label>
+            <textarea id="contenuModele" rows="4" th:text="${clause.contenuModele}"></textarea>
+        </div>
+        <div class="form-group">
+            <label><input type="checkbox" id="actif" th:checked="${clause.actif} ?: true" style="width:auto; margin-right:0.4rem;"/>Actif</label>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="page-header">
+            <h3 style="margin:0;">Variables</h3>
+            <button type="button" class="btn btn-sm" onclick="ajouterLigneVariable()">+ Ajouter une variable</button>
+        </div>
+        <div id="listeVariables"></div>
+    </div>
+
+    <button type="button" class="btn btn-primary" onclick="enregistrer()" style="padding:0.7rem 1.4rem;">Enregistrer</button>
+    <a th:href="@{/clauses-avenant}" class="btn">Annuler</a>
+</div>
+
+<script th:inline="javascript">
+    const CLAUSE_ID = /*[[${clause.id}]]*/ null;
+    const API_CLAUSES = /*[[@{/api/clauses-avenant}]]*/ '/api/clauses-avenant';
+    const URL_LISTE_CLAUSES = /*[[@{/clauses-avenant}]]*/ '/clauses-avenant';
+</script>
+<script th:src="@{/js/clause-avenant-form.js}"></script>
+</body>
+</html>

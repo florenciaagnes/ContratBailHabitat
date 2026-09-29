@@ -1,41 +1,31 @@
-const TYPES_VARIABLE = ['TEXT', 'NUMBER', 'MONEY', 'DATE', 'BOOLEAN', 'TEXTAREA', 'LISTE'];
-let compteurLigne = 0;
+const TYPES_VARIABLE_CLAUSE = ['TEXT', 'NUMBER', 'MONEY', 'DATE', 'BOOLEAN', 'TEXTAREA', 'LISTE'];
+let compteurLigneClause = 0;
 
-function esc(s) {
+function escClause(s) {
     return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function ligneVariableHtml(v) {
-    v = v || { nom: '', libelle: '', type: 'TEXT', obligatoire: true, valeurAuto: null };
-    const id = 'var-' + (compteurLigne++);
+    v = v || { nom: '', libelle: '', type: 'TEXT', obligatoire: true };
+    const id = 'varc-' + (compteurLigneClause++);
     const existant = !!v.id;
-    const options = TYPES_VARIABLE.map(t => `<option value="${t}" ${t === v.type ? 'selected' : ''}>${t}</option>`).join('');
-    const auto = (valeur, libelle) =>
-        `<option value="${valeur}" ${v.valeurAuto === valeur ? 'selected' : ''}>${libelle}</option>`;
+    const options = TYPES_VARIABLE_CLAUSE.map(t => `<option value="${t}" ${t === v.type ? 'selected' : ''}>${t}</option>`).join('');
     return `
         <div class="repr-block" id="${id}" data-existant-id="${v.id || ''}">
             <div class="form-row">
                 <div class="form-group">
                     <label>Nom (utilisé dans {{...}}) *</label>
-                    <input type="text" class="var-nom" value="${esc(v.nom)}" ${existant ? 'readonly' : ''}/>
+                    <input type="text" class="var-nom" value="${escClause(v.nom)}" ${existant ? 'readonly' : ''}/>
                 </div>
                 <div class="form-group">
                     <label>Libellé affiché *</label>
-                    <input type="text" class="var-libelle" value="${esc(v.libelle)}"/>
+                    <input type="text" class="var-libelle" value="${escClause(v.libelle)}"/>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Type</label>
-                    <select class="var-type" onchange="basculerOptionsListe('${id}')">${options}</select>
-                </div>
-                <div class="form-group">
-                    <label>Valeur</label>
-                    <select class="var-auto">
-                        <option value="">Saisie manuelle</option>
-                        ${auto('DATE_DEBUT', 'Automatique : date de début du bail')}
-                        ${auto('DATE_FIN', 'Automatique : date de fin du bail')}
-                    </select>
+                    <select class="var-type" onchange="basculerOptionsListeClause('${id}')">${options}</select>
                 </div>
                 <div class="form-group">
                     <label><input type="checkbox" class="var-obligatoire" ${v.obligatoire ? 'checked' : ''} style="width:auto; margin-right:0.4rem;"/>Obligatoire</label>
@@ -43,25 +33,31 @@ function ligneVariableHtml(v) {
             </div>
             <div class="form-group var-options-bloc" style="display:${v.type === 'LISTE' ? '' : 'none'};">
                 <label>Options de la liste déroulante (une par ligne) *</label>
-                <textarea class="var-options" rows="4" placeholder="Espèces&#10;MVola&#10;Orange Money">${esc(v.options || (v.optionsListe || []).join('\n'))}</textarea>
+                <textarea class="var-options" rows="4" placeholder="Espèces&#10;MVola&#10;Orange Money">${escClause(v.options || (v.optionsListe || []).join('\n'))}</textarea>
             </div>
             ${existant ? '' : `<button type="button" class="btn btn-sm btn-danger" onclick="document.getElementById('${id}').remove()">Retirer</button>`}
         </div>`;
+}
+
+function basculerOptionsListeClause(id) {
+    const bloc = document.getElementById(id);
+    const estListe = bloc.querySelector('.var-type').value === 'LISTE';
+    bloc.querySelector('.var-options-bloc').style.display = estListe ? '' : 'none';
 }
 
 function ajouterLigneVariable(donnees) {
     document.getElementById('listeVariables').insertAdjacentHTML('beforeend', ligneVariableHtml(donnees));
 }
 
-async function chargerArticleExistant() {
-    if (ARTICLE_ID === null) return;
-    const reponse = await fetch(API_ARTICLES + '/' + ARTICLE_ID);
+async function chargerClauseExistante() {
+    if (CLAUSE_ID === null) return;
+    const reponse = await fetch(API_CLAUSES + '/' + CLAUSE_ID);
     if (!reponse.ok) return;
-    const article = await reponse.json();
-    (article.variables || []).forEach(v => ajouterLigneVariable(v));
+    const clause = await reponse.json();
+    (clause.variables || []).forEach(v => ajouterLigneVariable(v));
 }
 
-function lireVariables() {
+function lireVariablesClause() {
     return Array.from(document.querySelectorAll('#listeVariables .repr-block')).map((bloc, i) => {
         const idExistant = bloc.dataset.existantId;
         return {
@@ -69,7 +65,6 @@ function lireVariables() {
             nom: bloc.querySelector('.var-nom').value.trim(),
             libelle: bloc.querySelector('.var-libelle').value.trim(),
             type: bloc.querySelector('.var-type').value,
-            valeurAuto: bloc.querySelector('.var-auto').value || null,
             options: bloc.querySelector('.var-options').value.trim() || null,
             obligatoire: bloc.querySelector('.var-obligatoire').checked,
             ordre: i
@@ -86,9 +81,8 @@ async function enregistrer() {
         titre: document.getElementById('titre').value.trim(),
         contenuModele: document.getElementById('contenuModele').value,
         ordreDefaut: parseInt(document.getElementById('ordreDefaut').value || '0', 10),
-        obligatoire: document.getElementById('obligatoire').checked,
         actif: document.getElementById('actif').checked,
-        variables: lireVariables()
+        variables: lireVariablesClause()
     };
 
     if (!donnees.code || !donnees.titre || !donnees.contenuModele) {
@@ -98,24 +92,23 @@ async function enregistrer() {
     }
 
     let reponse;
-    if (ARTICLE_ID === null) {
-        reponse = await fetch(API_ARTICLES, {
+    if (CLAUSE_ID === null) {
+        reponse = await fetch(API_CLAUSES, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(donnees)
         });
     } else {
-        reponse = await fetch(API_ARTICLES + '/' + ARTICLE_ID, {
+        reponse = await fetch(API_CLAUSES + '/' + CLAUSE_ID, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(donnees)
         });
-        // Variables : mise a jour des existantes (PUT), creation des nouvelles (POST)
         if (reponse.ok) {
             for (const v of donnees.variables) {
                 const url = v.id
-                    ? `${API_ARTICLES}/${ARTICLE_ID}/variables/${v.id}`
-                    : `${API_ARTICLES}/${ARTICLE_ID}/variables`;
+                    ? `${API_CLAUSES}/${CLAUSE_ID}/variables/${v.id}`
+                    : `${API_CLAUSES}/${CLAUSE_ID}/variables`;
                 const r = await fetch(url, {
                     method: v.id ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -133,13 +126,7 @@ async function enregistrer() {
         return;
     }
 
-    window.location.href = URL_LISTE_ARTICLES;
+    window.location.href = URL_LISTE_CLAUSES;
 }
 
-document.addEventListener('DOMContentLoaded', chargerArticleExistant);
-
-function basculerOptionsListe(id) {
-    const bloc = document.getElementById(id);
-    const estListe = bloc.querySelector('.var-type').value === 'LISTE';
-    bloc.querySelector('.var-options-bloc').style.display = estListe ? '' : 'none';
-}
+document.addEventListener('DOMContentLoaded', chargerClauseExistante);

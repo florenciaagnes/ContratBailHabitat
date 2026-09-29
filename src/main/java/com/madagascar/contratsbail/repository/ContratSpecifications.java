@@ -44,9 +44,14 @@ public final class ContratSpecifications {
     }
 
     public static Specification<Contrat> avecStatut(StatutContrat statut) {
-        return (root, query, cb) -> statut == null
-                ? cb.conjunction()
-                : cb.equal(root.get("statut"), statut);
+        return (root, query, cb) -> {
+            if (statut == null) {
+                return cb.conjunction();
+            }
+            query.distinct(true);
+            Join<Contrat, ContratStatut> statuts = root.join("statuts", JoinType.INNER);
+            return cb.equal(statuts.get("statut"), statut);
+        };
     }
 
     public static Specification<Contrat> dateCreationApres(LocalDateTime debut) {

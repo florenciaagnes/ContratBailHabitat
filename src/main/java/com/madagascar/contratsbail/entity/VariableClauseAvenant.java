@@ -1,30 +1,30 @@
 package com.madagascar.contratsbail.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.madagascar.contratsbail.entity.enums.SourceValeurAuto;
 import com.madagascar.contratsbail.entity.enums.TypeVariable;
 import jakarta.persistence.*;
-import java.util.Arrays;
-import java.util.List;
 import lombok.*;
 
+import java.util.Arrays;
+import java.util.List;
+
 @Entity
-@Table(name = "variable_article")
+@Table(name = "variable_clause_avenant")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VariableArticle {
+public class VariableClauseAvenant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_modele_article", nullable = false)
+    @JoinColumn(name = "id_modele_clause", nullable = false)
     @JsonIgnore
-    private ModeleArticle modeleArticle;
+    private ModeleClauseAvenant modeleClause;
 
     @Column(nullable = false, length = 100)
     private String nom;
@@ -44,19 +44,10 @@ public class VariableArticle {
     @Builder.Default
     private Integer ordre = 0;
 
-    /**
-     * Si renseigne, la variable n'est pas saisie par l'utilisateur : sa valeur
-     * est reprise automatiquement du contrat (date de debut / date de fin).
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "valeur_auto", length = 20)
-    private SourceValeurAuto valeurAuto;
-
     /** Options d'une variable de type LISTE, une par ligne. */
     @Column(columnDefinition = "TEXT")
     private String options;
 
-    /** Options nettoyees (sans lignes vides), utilisees par la liste deroulante. */
     public List<String> getOptionsListe() {
         if (options == null || options.isBlank()) {
             return List.of();

@@ -29,7 +29,10 @@
                 <td th:text="${#lists.size(c.parties) < 2 ? '' : (c.parties[1].nomAffichage)}"></td>
                 <td th:text="${c.dateDebut}"></td>
                 <td th:text="${c.dateFin}"></td>
-                <td><span class="badge" th:classappend="'badge-' + ${c.statut}" th:text="${c.statut}"></span></td>
+                <td>
+                    <span th:each="st : ${c.statutsAffiches}" class="badge" th:classappend="'badge-' + ${st}"
+                          th:text="${st.libelle}" style="margin-right:0.25rem;"></span>
+                </td>
                 <td class="text-right">
                     <a th:href="@{/contrats/{id}(id=${c.id})}" class="btn btn-sm">Voir</a>
                 </td>

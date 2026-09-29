@@ -20,7 +20,7 @@ public class ArticleApiController {
     public List<ModeleArticle> rechercher(@RequestParam(required = false) String recherche) {
         return articleService.rechercher(recherche);
     }
-
+ 
     @GetMapping("/{id}")
     public ModeleArticle obtenir(@PathVariable Long id) {
         return articleService.obtenir(id);
@@ -40,6 +40,12 @@ public class ArticleApiController {
     public ResponseEntity<Void> desactiver(@PathVariable Long id) {
         articleService.desactiver(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/variables/{idVariable}")
+    public ResponseEntity<VariableArticle> modifierVariable(@PathVariable Long id, @PathVariable Long idVariable,
+                                                            @RequestBody VariableArticle variable) {
+        return ResponseEntity.ok(articleService.modifierVariable(id, idVariable, variable));
     }
 
     @PostMapping("/{id}/variables")

@@ -105,6 +105,7 @@ async function selectionnerArticle(id) {
     const conteneur = document.getElementById('champsVariables');
     conteneur.innerHTML = '';
     (article.variables || []).forEach(v => {
+        if (v.valeurAuto) return; // reprise automatique du contrat (dates)
         const div = document.createElement('div');
         div.className = 'form-group';
         const typeInput = { NUMBER: 'number', MONEY: 'number', DATE: 'date' }[v.type] || 'text';
@@ -112,6 +113,9 @@ async function selectionnerArticle(id) {
             div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><textarea rows="3" data-var-id="${v.id}" data-var-nom="${v.nom}"></textarea>`;
         } else if (v.type === 'BOOLEAN') {
             div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><select data-var-id="${v.id}" data-var-nom="${v.nom}"><option value="Oui">Oui</option><option value="Non">Non</option></select>`;
+        } else if (v.type === 'LISTE') {
+            const options = (v.optionsListe || []).map(o => `<option value="${o}">${o}</option>`).join('');
+            div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><select data-var-id="${v.id}" data-var-nom="${v.nom}"><option value="">— Choisir —</option>${options}</select>`;
         } else {
             div.innerHTML = `<label>${v.libelle}${v.obligatoire ? ' *' : ''}</label><input type="${typeInput}" data-var-id="${v.id}" data-var-nom="${v.nom}"/>`;
         }
@@ -137,7 +141,8 @@ function validerAjoutArticle() {
         code: article.code,
         titre: article.titre,
         contenuModele: article.contenuModele,
-        variables
+        variables,
+        autos: (article.variables || []).filter(v => v.valeurAuto).map(v => ({ nom: v.nom, source: v.valeurAuto }))
     });
     fermerModalArticle();
     rendreArticlesAjoutes();
@@ -221,7 +226,7 @@ function mettreAJourApercu() {
     }
 
     let articlesHtml = etat.articlesAjoutes.map((a, i) => {
-        const texte = substituerVariables(a.contenuModele, a.variables);
+        const texte = substituerVariables(a.contenuModele, a.variables.concat((a.autos || []).map(x => ({ nom: x.nom, valeur: valeurAutomatique(x.source) }))));
         return `<div class="article-title">Article ${i + 1} : ${a.titre}</div><div>${escapeHtml(texte)}</div>`;
     }).join('');
     if (etat.articlesAjoutes.length === 0) {
@@ -272,6 +277,24 @@ function val(id) {
 
 async function creerContrat() {
     document.getElementById('erreurGlobale').style.display = 'none';
+
+    // Validation du CIN malgache avant envoi (le serveur revalide de toute facon)
+    const verifs = [['du propriétaire', val('propCin')]];
+    if (etat.typeLocataire === 'PERSONNE') {
+        verifs.push(['du locataire', val('locCin')]);
+    } else {
+        etat.representants.forEach(r => verifs.push(['du représentant ' + (r.nom || ''), r.cin]));
+    }
+    for (const [libelle, cin] of verifs) {
+        const message = validerCin(cin, libelle);
+        if (message) {
+            const bloc = document.getElementById('erreurGlobale');
+            bloc.textContent = message;
+            bloc.style.display = '';
+            window.scrollTo(0, 0);
+            return;
+        }
+    }
 
     const proprietaire = { typePartie: 'PERSONNE', personne: construirePersonneDto('prop') };
 
@@ -329,4 +352,24 @@ async function creerContrat() {
 
     const contrat = await reponse.json();
     window.location.href = URL_VOIR_CONTRAT + contrat.id;
+}
+
+// CIN malgache : 12 chiffres, 6e chiffre = 1 (homme) ou 2 (femme)
+function validerCin(cin, libelle) {
+    const n = (cin || '').replace(/[\s.\-]/g, '');
+    if (n === '') return `Le CIN ${libelle} est obligatoire.`;
+    if (!/^[0-9]+$/.test(n)) return `Le CIN ${libelle} ne doit contenir que des chiffres.`;
+    if (n.length !== 12) return `Le CIN ${libelle} doit contenir exactement 12 chiffres (${n.length} saisis).`;
+    if (n[5] !== '1' && n[5] !== '2') return `Le CIN ${libelle} est invalide : le 6e chiffre doit être 1 (homme) ou 2 (femme).`;
+    return null;
+}
+
+// Valeurs reprises automatiquement de la section "Duree & bien loue"
+function formatDateFr(iso) {
+    if (!iso) return '';
+    const [a, m, j] = iso.split('-');
+    return `${j}/${m}/${a}`;
+}
+function valeurAutomatique(source) {
+    return formatDateFr(val(source === 'DATE_DEBUT' ? 'dateDebut' : 'dateFin'));
 }

@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Construit le PDF du contrat de bail en respectant la structure demandee :
@@ -50,13 +51,100 @@ public class PdfGenerationService {
             ajouterIntroductionArticles(document);
             ajouterArticles(document, contrat);
             ajouterDateEtLieu(document);
-            ajouterSignatures(document, contrat);
+            ajouterSignatures(document, contrat, p -> contrat.getSignatures().stream()
+                    .filter(sg -> sg.getPersonne().getId().equals(p.getId()))
+                    .map(Signature::getSignatureData)
+                    .findFirst());
 
             document.close();
             return out.toByteArray();
         } catch (DocumentException e) {
             throw new IllegalStateException("Erreur lors de la generation du PDF du contrat " + contrat.getNumero(), e);
         }
+    }
+
+
+    /** PDF de l'avenant : reference au contrat, parties, clauses, signatures des parties. */
+    public byte[] genererPdfAvenant(Avenant avenant) {
+        try {
+            Contrat contrat = avenant.getContrat();
+            Document document = new Document(PageSize.A4, 60, 60, 50, 50);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            PdfWriter.getInstance(document, out);
+            document.open();
+
+            String numero = avenant.getNumero();
+            int idx = numero.lastIndexOf("-AV");
+            String rang = idx >= 0 ? numero.substring(idx + 3) : numero;
+
+            Paragraph titre = new Paragraph("AVENANT N° " + rang + " AU CONTRAT DE BAIL", titreFont);
+            titre.setAlignment(Element.ALIGN_CENTER);
+            titre.setSpacingAfter(8f);
+            document.add(titre);
+
+            Paragraph reference = new Paragraph("Contrat de bail N° " + contrat.getNumero()
+                    + " établi le " + contrat.getDateCreation().toLocalDate().format(DATE_FR), texteFont);
+            reference.setAlignment(Element.ALIGN_CENTER);
+            reference.setSpacingAfter(20f);
+            document.add(reference);
+
+            ajouterParties(document, contrat);
+
+            Paragraph convenu = new Paragraph("Il a été convenu ce qui suit :", sousTitreFont);
+            convenu.setSpacingBefore(10f);
+            convenu.setSpacingAfter(10f);
+            document.add(convenu);
+
+            Paragraph objet = new Paragraph();
+            objet.add(new Chunk("Objet : ", texteGrasFont));
+            objet.add(new Chunk(avenant.getObjet(), texteFont));
+            objet.add(Chunk.NEWLINE);
+            objet.add(new Chunk("Date d'effet : ", texteGrasFont));
+            objet.add(new Chunk(avenant.getDateEffet().format(DATE_FR), texteFont));
+            objet.setSpacingAfter(10f);
+            document.add(objet);
+
+            int numeroArticle = 1;
+            for (AvenantClause clause : avenant.getClauses()) {
+                ajouterArticleAvenant(document, numeroArticle++, clause.getTitre(), clause.getContenu());
+            }
+            if (avenant.getNouvelleDateFin() != null) {
+                ajouterArticleAvenant(document, numeroArticle, "NOUVELLE DATE DE FIN",
+                        "Les parties conviennent que le bail prend fin le "
+                                + avenant.getNouvelleDateFin().format(DATE_FR) + ".");
+            }
+
+            Paragraph maintien = new Paragraph(
+                    "Toutes les autres clauses et conditions du contrat de bail initial demeurent inchangées.",
+                    texteFont);
+            maintien.setSpacingBefore(14f);
+            document.add(maintien);
+
+            ajouterDateEtLieu(document);
+            ajouterSignatures(document, contrat, p -> avenant.getSignatures().stream()
+                    .filter(sg -> sg.getPersonne().getId().equals(p.getId()))
+                    .map(SignatureAvenant::getSignatureData)
+                    .findFirst());
+
+            document.close();
+            return out.toByteArray();
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Erreur lors de la generation du PDF de l'avenant " + avenant.getNumero(), e);
+        }
+    }
+
+    private void ajouterArticleAvenant(Document document, int numero, String titre, String contenu)
+            throws DocumentException {
+        Paragraph t = new Paragraph("Article " + numero + " : " + titre, texteGrasFont);
+        t.setSpacingBefore(10f);
+        t.setSpacingAfter(4f);
+        document.add(t);
+
+        Paragraph c = new Paragraph(contenu, texteFont);
+        c.setAlignment(Element.ALIGN_JUSTIFIED);
+        c.setIndentationLeft(10f);
+        c.setSpacingAfter(6f);
+        document.add(c);
     }
 
     private void ajouterTitre(Document document) throws DocumentException {
@@ -177,7 +265,8 @@ public class PdfGenerationService {
         document.add(dateLieu);
     }
 
-    private void ajouterSignatures(Document document, Contrat contrat) throws DocumentException {
+    private void ajouterSignatures(Document document, Contrat contrat,
+                                   Function<Personne, Optional<String>> signatureDe) throws DocumentException {
         Optional<PartieContrat> proprietaire = contrat.getParties().stream()
                 .filter(p -> p.getRole() == RolePartie.PROPRIETAIRE).findFirst();
         Optional<PartieContrat> locataire = contrat.getParties().stream()
@@ -189,19 +278,20 @@ public class PdfGenerationService {
         PdfPCell colProprietaire = new PdfPCell();
         colProprietaire.setBorder(Rectangle.NO_BORDER);
         colProprietaire.addElement(new Paragraph("Le Propriétaire", signatureLabelFont));
-        proprietaire.ifPresent(p -> ajouterSignaturesPartie(colProprietaire, p, contrat));
+        proprietaire.ifPresent(p -> ajouterSignaturesPartie(colProprietaire, p, signatureDe));
 
         PdfPCell colLocataire = new PdfPCell();
         colLocataire.setBorder(Rectangle.NO_BORDER);
         colLocataire.addElement(new Paragraph("Le Locataire", signatureLabelFont));
-        locataire.ifPresent(p -> ajouterSignaturesPartie(colLocataire, p, contrat));
+        locataire.ifPresent(p -> ajouterSignaturesPartie(colLocataire, p, signatureDe));
 
         table.addCell(colProprietaire);
         table.addCell(colLocataire);
         document.add(table);
     }
 
-    private void ajouterSignaturesPartie(PdfPCell cellule, PartieContrat partie, Contrat contrat) {
+    private void ajouterSignaturesPartie(PdfPCell cellule, PartieContrat partie,
+                                         Function<Personne, Optional<String>> signatureDe) {
         try {
             List<Personne> signataires;
             if (partie.getTypePartie() == TypePartie.PERSONNE) {
@@ -215,12 +305,10 @@ public class PdfGenerationService {
             }
 
             for (Personne p : signataires) {
-                Optional<Signature> signature = contrat.getSignatures().stream()
-                        .filter(s -> s.getPersonne().getId().equals(p.getId()))
-                        .findFirst();
+                Optional<String> signature = signatureDe.apply(p);
 
                 if (signature.isPresent()) {
-                    Image image = decoderSignature(signature.get().getSignatureData());
+                    Image image = decoderSignature(signature.get());
                     if (image != null) {
                         image.scaleToFit(160f, 60f);
                         cellule.addElement(image);

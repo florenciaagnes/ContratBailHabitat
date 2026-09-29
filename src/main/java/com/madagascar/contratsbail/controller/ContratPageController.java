@@ -3,7 +3,9 @@ package com.madagascar.contratsbail.controller;
 import com.madagascar.contratsbail.entity.Contrat;
 import com.madagascar.contratsbail.entity.enums.StatutContrat;
 import com.madagascar.contratsbail.service.ArticleService;
+import com.madagascar.contratsbail.service.AvenantService;
 import com.madagascar.contratsbail.service.ContratService;
+import com.madagascar.contratsbail.util.TypesBien;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,6 +24,7 @@ public class ContratPageController {
 
     private final ContratService contratService;
     private final ArticleService articleService;
+    private final AvenantService avenantService;
 
     @GetMapping
     public String liste(Model model) {
@@ -32,6 +35,7 @@ public class ContratPageController {
     @GetMapping("/nouveau")
     public String nouveau(Model model) {
         model.addAttribute("articlesDisponibles", articleService.listerActifs());
+        model.addAttribute("typesBien", TypesBien.VALEURS);
         return "contrats/nouveau";
     }
 
@@ -40,6 +44,8 @@ public class ContratPageController {
         Contrat contrat = contratService.obtenir(id);
         model.addAttribute("contrat", contrat);
         model.addAttribute("articlesDisponibles", articleService.listerActifs());
+        model.addAttribute("avenants", avenantService.listerParContrat(id));
+        model.addAttribute("dateFinEffective", avenantService.dateFinEffective(id));
         return "contrats/voir";
     }
 

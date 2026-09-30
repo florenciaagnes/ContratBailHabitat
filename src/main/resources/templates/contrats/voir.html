@@ -18,8 +18,18 @@
                   onsubmit="return confirm('Archiver ce contrat ? Son état sera figé.');">
                 <button type="submit" class="btn btn-success" th:disabled="${contrat.statut.name() == 'ARCHIVE'}">Archiver le contrat</button>
             </form>
+            <button type="button" class="btn btn-accent renouveler-btn" th:if="${contrat.expire}"
+                    th:data-id="${contrat.id}" th:data-numero="${contrat.numero}"
+                    th:data-date-fin="${(dateFinEffective ?: contrat.dateFin) != null ? #temporals.format(dateFinEffective ?: contrat.dateFin, 'yyyy-MM-dd') : ''}">
+                🔁 Renouveler (tacite reconduction)
+            </button>
         </div>
     </div>
+
+    <p class="muted" th:if="${contrat.contratOrigine != null}">
+        Ce contrat est un renouvellement du contrat
+        <a th:href="@{/contrats/{id}(id=${contrat.contratOrigine.id})}" th:text="${contrat.contratOrigine.numero}"></a>.
+    </p>
 
     <div class="split-view">
         <div>
@@ -149,12 +159,16 @@
     </div>
 </div>
 
+<div th:replace="~{fragments/layout :: modalRenouvellement}"></div>
+
 <script th:inline="javascript">
     const API_ARTICLES = /*[[@{/api/articles}]]*/ '/api/articles';
     const API_CONTRATS = /*[[@{/api/contrats}]]*/ '/api/contrats';
     const CONTRAT_ID = /*[[${contrat.id}]]*/ 0;
+    const URL_CONTRAT = /*[[@{/contrats/}]]*/ '/contrats/';
 </script>
 <script th:src="@{/js/contrat-voir.js}"></script>
 <script th:src="@{/js/signature.js}"></script>
+<script th:src="@{/js/renouvellement.js}"></script>
 </body>
 </html>

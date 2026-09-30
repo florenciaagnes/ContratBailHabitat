@@ -20,7 +20,7 @@ public class ArticleApiController {
     public List<ModeleArticle> rechercher(@RequestParam(required = false) String recherche) {
         return articleService.rechercher(recherche);
     }
- 
+
     @GetMapping("/{id}")
     public ModeleArticle obtenir(@PathVariable Long id) {
         return articleService.obtenir(id);

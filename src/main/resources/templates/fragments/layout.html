@@ -19,5 +19,52 @@
         <a th:href="@{/clauses-avenant}">Clauses d'avenant</a>
     </div>
 </nav>
+
+<!-- Modal de renouvellement par tacite reconduction (contrat expire -> nouveau contrat) -->
+<div class="modal-backdrop" id="modalRenouvellement" th:fragment="modalRenouvellement">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>🔁 Renouveler par tacite reconduction</h3>
+            <button type="button" onclick="fermerModalRenouvellement()">✕</button>
+        </div>
+
+        <div class="renouvellement-resume">
+            <div class="renouvellement-contrat">
+                <span class="muted">Contrat</span>
+                <strong id="renouvellementNumero"></strong>
+            </div>
+            <div class="renouvellement-periode">
+                <div class="renouvellement-periode-etape">
+                    <span class="muted">Fin actuelle</span>
+                    <strong id="renouvellementAncienneFin" class="badge badge-EXPIRE"></strong>
+                </div>
+                <span class="renouvellement-fleche">→</span>
+                <div class="renouvellement-periode-etape">
+                    <span class="muted">Reprend le</span>
+                    <strong id="renouvellementNouvelleDebut" class="badge badge-EN_ATTENTE_SIGNATURE"></strong>
+                </div>
+            </div>
+        </div>
+
+        <p class="muted" style="margin-top:0.8rem;">
+            Un <strong>nouveau contrat</strong> sera créé avec le même bien, les mêmes parties et les mêmes
+            articles que le contrat ci-dessus. Il démarrera en brouillon et devra être signé et archivé
+            à nouveau — la tacite reconduction ne signe rien automatiquement.
+        </p>
+
+        <div id="renouvellementErreur" class="alert alert-danger" style="display:none;"></div>
+
+        <div class="form-group">
+            <label>Nouvelle date de fin *</label>
+            <input type="date" id="renouvellementDateFin"/>
+            <p class="muted" id="renouvellementAide" style="margin-top:0.3rem;"></p>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+            <button type="button" class="btn" onclick="fermerModalRenouvellement()">Annuler</button>
+            <button type="button" class="btn btn-primary" onclick="confirmerRenouvellement()">Créer le renouvellement</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

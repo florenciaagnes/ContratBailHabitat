@@ -39,6 +39,15 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Empeche Jackson de planter quand une association Hibernate LAZY
+             (ManyToOne/OneToOne) n'est pas encore initialisee au moment de la
+             serialisation JSON d'une entite : serialise "null" au lieu de
+             tenter (et echouer) de serialiser le proxy Hibernate lui-meme. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-hibernate6</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

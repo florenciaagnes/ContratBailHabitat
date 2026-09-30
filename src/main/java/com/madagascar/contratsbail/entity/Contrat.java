@@ -1,6 +1,7 @@
 package com.madagascar.contratsbail.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.madagascar.contratsbail.entity.enums.StatutContrat;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,6 +11,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+// Ignore les proprietes internes generees par Hibernate sur les proxys
+// (HibernateProxy/ByteBuddy) : sans ca, serialiser une association LAZY
+// pas encore chargee fait planter Jackson (voir README).
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "contrat")
 @Getter
@@ -50,6 +55,12 @@ public class Contrat {
     @Column(name = "date_archivage")
     private LocalDateTime dateArchivage;
 
+    /** Renseigne quand ce contrat est un renouvellement (tacite reconduction) d'un contrat expire. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_contrat_origine")
+    @JsonIgnore
+    private Contrat contratOrigine;
+
     @OneToMany(mappedBy = "contrat", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("ordre ASC")
     @JsonIgnore
@@ -82,6 +93,11 @@ public class Contrat {
     /** Tous les statuts detenus par le contrat, dans l'ordre d'affichage (BROUILLON ... EXPIRE). */
     public List<StatutContrat> getStatutsAffiches() {
         return statuts.stream().map(ContratStatut::getStatut).distinct().sorted().toList();
+    }
+
+    /** Vrai si le contrat porte actuellement le statut EXPIRE (utilisable en Thymeleaf : contrat.expire). */
+    public boolean isExpire() {
+        return statuts.stream().anyMatch(cs -> cs.getStatut() == StatutContrat.EXPIRE);
     }
 
     @PrePersist

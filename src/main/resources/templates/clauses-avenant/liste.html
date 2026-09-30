@@ -31,8 +31,8 @@
                 </td>
                 <td class="text-right">
                     <a th:href="@{/clauses-avenant/{id}/modifier(id=${c.id})}" class="btn btn-sm">Modifier</a>
-                    <button type="button" class="btn btn-sm btn-danger" th:if="${c.actif}"
-                            th:onclick="'desactiverClause(' + ${c.id} + ')'">Désactiver</button>
+                    <button type="button" class="btn btn-sm btn-danger desactiver-clause-btn" th:if="${c.actif}"
+                            th:data-id="${c.id}">Désactiver</button>
                 </td>
             </tr>
             </tbody>
@@ -43,6 +43,13 @@
 
 <script th:inline="javascript">
     const API_CLAUSES = /*[[@{/api/clauses-avenant}]]*/ '/api/clauses-avenant';
+
+    document.addEventListener('click', (evenement) => {
+        const bouton = evenement.target.closest('.desactiver-clause-btn');
+        if (bouton) {
+            desactiverClause(parseInt(bouton.dataset.id, 10));
+        }
+    });
 
     async function desactiverClause(id) {
         if (!confirm("Désactiver cette clause ? Elle ne sera plus proposée pour les nouveaux avenants.")) return;

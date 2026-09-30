@@ -423,6 +423,86 @@ public class ContratService {
         return document;
     }
 
+    // ------------------------------------------------------------------
+    // Renouvellement (tacite reconduction)
+    // ------------------------------------------------------------------
+
+    /**
+     * Cree un NOUVEAU contrat reprenant le meme bien, les memes parties et les
+     * memes articles qu'un contrat expire, avec une nouvelle periode de bail.
+     * Le contrat d'origine n'est jamais modifie. Le nouveau contrat demarre
+     * en BROUILLON : il doit etre re-signe puis archive comme n'importe quel
+     * contrat (la tacite reconduction n'emporte pas de signature automatique).
+     */
+    public Contrat renouveler(Long idContratOrigine, RenouvellementContratRequest requete) {
+        Contrat origine = obtenir(idContratOrigine);
+
+        if (!statutContratService.possede(origine, StatutContrat.EXPIRE)) {
+            throw new ValidationMetierException("Seul un contrat expiré peut être renouvelé par tacite reconduction.");
+        }
+
+        LocalDate ancienneFin = statutContratService.dateFinEffective(origine);
+        if (ancienneFin == null) {
+            throw new ValidationMetierException("Ce contrat n'a pas de date de fin : le renouvellement est impossible.");
+        }
+        LocalDate nouvelleDebut = ancienneFin.plusDays(1);
+
+        if (requete.getNouvelleDateFin() == null) {
+            throw new ValidationMetierException("La nouvelle date de fin est obligatoire.");
+        }
+        if (requete.getNouvelleDateFin().isBefore(nouvelleDebut)) {
+            throw new ValidationMetierException("La nouvelle date de fin doit être postérieure au "
+                    + ancienneFin.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ".");
+        }
+
+        Contrat nouveau = Contrat.builder()
+                .numero(genererNumero())
+                .dateDebut(nouvelleDebut)
+                .dateFin(requete.getNouvelleDateFin())
+                .bien(bienRepository.findById(origine.getBien().getId())
+                        .orElseThrow(() -> new RessourceIntrouvableException("Bien introuvable")))
+                .statut(StatutContrat.BROUILLON)
+                .contratOrigine(origine)
+                .build();
+        nouveau = contratRepository.save(nouveau);
+        statutContratService.ajouter(nouveau, StatutContrat.BROUILLON);
+
+        int ordrePartie = 0;
+        for (PartieContrat p : origine.getParties()) {
+            PartieContrat copie = PartieContrat.builder()
+                    .contrat(nouveau)
+                    .typePartie(p.getTypePartie())
+                    .personne(p.getPersonne())
+                    .organisation(p.getOrganisation())
+                    .role(p.getRole())
+                    .ordre(ordrePartie++)
+                    .build();
+            partieContratRepository.save(copie);
+        }
+
+        for (ContratArticle a : origine.getArticles()) {
+            ContratArticle copieArticle = ContratArticle.builder()
+                    .contrat(nouveau)
+                    .modeleArticle(a.getModeleArticle())
+                    .ordre(a.getOrdre())
+                    .contenuFinal(a.getContenuFinal())
+                    .build();
+            copieArticle = contratArticleRepository.save(copieArticle);
+
+            for (ContratVariable v : contratVariableRepository.findByContratArticleId(a.getId())) {
+                ContratVariable copieVariable = ContratVariable.builder()
+                        .contratArticle(copieArticle)
+                        .variable(v.getVariable())
+                        .valeur(v.getValeur())
+                        .build();
+                contratVariableRepository.save(copieVariable);
+            }
+        }
+
+        statutContratService.synchroniserExpiration(nouveau);
+        return obtenir(nouveau.getId());
+    }
+
     private List<Personne> signatairesAttendus(Contrat contrat) {
         List<Personne> resultat = new ArrayList<>();
         for (PartieContrat partie : contrat.getParties()) {

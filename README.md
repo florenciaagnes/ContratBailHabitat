@@ -75,10 +75,20 @@ vers `/contrats`.
    dépassée reçoit automatiquement le statut **EXPIRÉ**, y compris si on crée
    un nouveau contrat déjà expiré. Cette synchronisation tourne au démarrage
    de l'application puis chaque nuit à 00h05 (heure de Madagascar).
+6. **Renouvellement par tacite reconduction** : un bouton « 🔁 Renouveler »
+   apparaît à côté de chaque contrat **EXPIRÉ** (liste des contrats, archives,
+   fiche du contrat). Il demande uniquement une nouvelle date de fin et crée
+   un **nouveau contrat** (nouveau numéro `BAIL-2026-00X`) reprenant le même
+   bien, les mêmes parties (propriétaire, locataire, représentants) et les
+   mêmes articles (avec leurs valeurs déjà remplies), pour une nouvelle
+   période démarrant le lendemain de l'ancienne date de fin. Le contrat
+   d'origine n'est jamais modifié ; le nouveau démarre en BROUILLON et doit
+   être signé et archivé comme n'importe quel contrat — la tacite
+   reconduction ne signe pas automatiquement le renouvellement.
    Les variables marquées « valeur automatique » (ex. `date_debut` et
    `date_fin` de l'article DUREE) ne sont plus saisies : elles sont reprises
    des dates de la section « Durée & bien loué ».
-6. **`/contrats/archives`** — recherche (numéro, nom, prénom, CIN, société,
+7. **`/contrats/archives`** — recherche (numéro, nom, prénom, CIN, société,
    adresse) insensible à la casse, filtrable par statut et par dates.
 6. **Avenants** — depuis la page d'un contrat **signé**, bouton « + Nouvel
    avenant » : objet, date d'effet, une ou plusieurs clauses **choisies dans
@@ -89,12 +99,12 @@ vers `/contrats`.
    locataire ou représentants) et son archivage. Le contrat archivé n'est
    **jamais modifié** : la date de fin effective est affichée sur la page du
    contrat à partir des avenants archivés.
-7. **`/clauses-avenant`** — bibliothèque des modèles de clauses d'avenant
+8. **`/clauses-avenant`** — bibliothèque des modèles de clauses d'avenant
    (même principe que `/articles`) : révision du loyer, changement du mode de
    paiement, clause libre... avec variables typées, y compris des listes
    déroulantes (ex. mode de paiement : Espèces / MVola / Orange Money /
    Airtel Money / Virement bancaire / Chèque).
-8. **`/articles`** — administration de la bibliothèque de modèles d'articles
+9. **`/articles`** — administration de la bibliothèque de modèles d'articles
    (créer, modifier, désactiver, gérer les variables et leur type :
    TEXT / NUMBER / MONEY / DATE / BOOLEAN / TEXTAREA).
 
@@ -130,6 +140,22 @@ db/migration/ Scripts Flyway (schéma + données initiales)
 - Bibliothèque d'articles / de clauses d'avenant : les variables existantes
   peuvent être modifiées (libellé, type, options, valeur automatique) mais
   pas supprimées ni renommées.
+- Sérialiser en JSON une entité dont une association (ex. `Contrat.bien`) n'a
+  pas encore été chargée par Hibernate provoque normalement une erreur 500
+  (`ByteBuddyInterceptor`/`HibernateProxy`). Deux protections sont en place :
+  la dépendance `jackson-datatype-hibernate6` (best-effort, dépend de
+  l'auto-registration Jackson de Spring Boot) et, de façon garantie et
+  indépendante, l'annotation `@JsonIgnoreProperties({"hibernateLazyInitializer",
+  "handler"})` posée sur **chaque entité** (`entity/*.java`) : elle dit à
+  Jackson d'ignorer ces deux propriétés internes générées par Hibernate quoi
+  qu'il arrive. C'est cette seconde protection qui résout le problème dans
+  tous les cas ; si le build échoue faute de version résolue pour
+  `jackson-datatype-hibernate6`, elle peut être retirée du `pom.xml` sans
+  rien casser.
+- Le renouvellement ne copie pas les signatures ni les avenants du contrat
+  d'origine (normal : c'est une nouvelle période contractuelle). Un lien
+  « Ce contrat est un renouvellement du contrat ... » apparaît sur la fiche
+  du nouveau contrat pour tracer l'origine.
 - Le statut « workflow » d'un contrat (colonne `contrat.statut`, utilisée
   pour les autorisations : modifier/signer/archiver) reste une valeur unique
   (BROUILLON → EN_ATTENTE_SIGNATURE → SIGNE → ARCHIVE). Seul l'**affichage**

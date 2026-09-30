@@ -1,6 +1,7 @@
 package com.madagascar.contratsbail.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.madagascar.contratsbail.entity.enums.StatutContrat;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,6 +9,10 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /** Une ligne de la table statut_contrat : un statut detenu par un contrat. */
+// Ignore les proprietes internes generees par Hibernate sur les proxys
+// (HibernateProxy/ByteBuddy) : sans ca, serialiser une association LAZY
+// pas encore chargee fait planter Jackson (voir README).
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "statut_contrat")
 @Getter

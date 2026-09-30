@@ -65,6 +65,11 @@
                     <a th:href="@{/contrats/{id}(id=${c.id})}" class="btn btn-sm">Voir</a>
                     <a th:href="@{/contrats/{id}/pdf(id=${c.id})}" target="_blank" class="btn btn-sm">PDF</a>
                     <a th:href="@{/contrats/{id}/pdf/telecharger(id=${c.id})}" class="btn btn-sm">Télécharger</a>
+                    <button type="button" class="btn btn-sm btn-accent renouveler-btn" th:if="${c.expire}"
+                            th:data-id="${c.id}" th:data-numero="${c.numero}"
+                            th:data-date-fin="${c.dateFin != null ? #temporals.format(c.dateFin, 'yyyy-MM-dd') : ''}">
+                        🔁 Renouveler
+                    </button>
                 </td>
             </tr>
             </tbody>
@@ -72,5 +77,12 @@
         <p class="muted" th:if="${#lists.isEmpty(contrats)}">Aucun contrat ne correspond à cette recherche.</p>
     </div>
 </div>
+
+<div th:replace="~{fragments/layout :: modalRenouvellement}"></div>
+<script th:inline="javascript">
+    const API_CONTRATS = /*[[@{/api/contrats}]]*/ '/api/contrats';
+    const URL_CONTRAT = /*[[@{/contrats/}]]*/ '/contrats/';
+</script>
+<script th:src="@{/js/renouvellement.js}"></script>
 </body>
 </html>

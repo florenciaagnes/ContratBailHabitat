@@ -5,3 +5,9 @@ les contrat dont les date de fin sont depasser doit automatiquement avoir la sta
 donc un conrat peut avoir beaucoup de statut en meme temp et affiche ces statuts dans le tableau archives.
 
 et rend le clause dans l avenant comme celle de l articles pour inserer un nouveau contrat , ajoute de titre et on rempli juste les variable
+
+
+
+2026-09-30T02:49:15.416+00:00 / 500 / Internal Server Error / /api/contrats/5/renouvele
+
+il y a cetteereur lorsqu on clique sur le bouton "renouveler" et qu on entre une nouvelle date de fin et aussi tu peux propose une autre design stp

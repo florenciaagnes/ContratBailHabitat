@@ -2,6 +2,7 @@ package com.madagascar.contratsbail.controller;
 
 import com.madagascar.contratsbail.dto.AjoutArticleRequest;
 import com.madagascar.contratsbail.dto.CreationContratRequest;
+import com.madagascar.contratsbail.dto.RenouvellementContratRequest;
 import com.madagascar.contratsbail.dto.SignatureRequest;
 import com.madagascar.contratsbail.entity.Contrat;
 import com.madagascar.contratsbail.entity.ContratArticle;
@@ -69,5 +70,11 @@ public class ContratApiController {
     @PostMapping("/{id}/archiver")
     public ResponseEntity<DocumentContrat> archiver(@PathVariable Long id) {
         return ResponseEntity.ok(contratService.archiver(id));
+    }
+
+    /** Renouvellement par tacite reconduction : cree un nouveau contrat a partir d'un contrat expire. */
+    @PostMapping("/{id}/renouveler")
+    public ResponseEntity<Contrat> renouveler(@PathVariable Long id, @RequestBody RenouvellementContratRequest requete) {
+        return ResponseEntity.ok(contratService.renouveler(id, requete));
     }
 }

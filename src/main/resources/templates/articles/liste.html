@@ -33,8 +33,8 @@
                 </td>
                 <td class="text-right">
                     <a th:href="@{/articles/{id}/modifier(id=${a.id})}" class="btn btn-sm">Modifier</a>
-                    <button type="button" class="btn btn-sm btn-danger" th:if="${a.actif}"
-                            th:onclick="'desactiverArticle(' + ${a.id} + ')'">Désactiver</button>
+                    <button type="button" class="btn btn-sm btn-danger desactiver-article-btn" th:if="${a.actif}"
+                            th:data-id="${a.id}">Désactiver</button>
                 </td>
             </tr>
             </tbody>
@@ -45,6 +45,13 @@
 
 <script th:inline="javascript">
     const API_ARTICLES = /*[[@{/api/articles}]]*/ '/api/articles';
+
+    document.addEventListener('click', (evenement) => {
+        const bouton = evenement.target.closest('.desactiver-article-btn');
+        if (bouton) {
+            desactiverArticle(parseInt(bouton.dataset.id, 10));
+        }
+    });
 
     async function desactiverArticle(id) {
         if (!confirm('Désactiver cet article ? Il ne sera plus proposé pour les nouveaux contrats.')) return;

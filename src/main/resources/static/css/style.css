@@ -169,6 +169,17 @@ th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transfo
     background: white; display: block; width: 100%; height: 200px;
 }
 
+.renouvellement-resume {
+    background: #fdf8ec;
+    border: 1px solid #f0e2b6;
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
+}
+.renouvellement-contrat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
+.renouvellement-periode { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.renouvellement-periode-etape { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.renouvellement-fleche { font-size: 1.3rem; color: var(--text-muted); }
+
 .alert { padding: 0.7rem 0.9rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.88rem; }
 .alert-danger { background: #fee2e2; color: #991b1b; }
 .alert-warning { background: #fef3c7; color: #92400e; }

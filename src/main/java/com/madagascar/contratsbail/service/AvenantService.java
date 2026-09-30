@@ -72,7 +72,7 @@ public class AvenantService {
         int ordre = 1;
         if (requete.getClauses() != null) {
             for (AjoutClauseAvenantRequest c : requete.getClauses()) {
-                avenant.getClauses().add(construireClause(c, ordre++));
+                avenant.getClauses().add(construireClause(avenant, c, ordre++));
             }
         }
         return avenantRepository.save(avenant);
@@ -214,7 +214,7 @@ public class AvenantService {
     }
 
     /** Construit une clause d'avenant a partir d'un modele de la bibliotheque + valeurs saisies. */
-    private AvenantClause construireClause(AjoutClauseAvenantRequest requete, int ordre) {
+    private AvenantClause construireClause(Avenant avenant, AjoutClauseAvenantRequest requete, int ordre) {
         ModeleClauseAvenant modele = modeleClauseAvenantRepository.findById(requete.getIdModeleClause())
                 .orElseThrow(() -> new RessourceIntrouvableException("Modèle de clause introuvable"));
 
@@ -246,6 +246,7 @@ public class AvenantService {
         String contenuFinal = VariableSubstitutionUtil.substituer(modele.getContenuModele(), valeurs);
 
         return AvenantClause.builder()
+                .avenant(avenant)
                 .ordre(ordre)
                 .titre(modele.getTitre())
                 .contenu(contenuFinal)
